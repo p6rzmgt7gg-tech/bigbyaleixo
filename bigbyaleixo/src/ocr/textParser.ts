@@ -1,0 +1,115 @@
+/**
+ * Interpretação do texto reconhecido: recebe as células lidas pelo OCR (texto + posição
+ * + confiança) e os traços da grelha, e devolve o call sheet estruturado segundo o
+ * template. Nunca inventa valores: o que não for encontrado fica vazio.
+ */
+import { withFixedRows } from '../templates/fixedRows';
+import type { CallSheetTemplate } from '../templates';
+import type { CallSheetDocument, SectionKey } from '../types/callSheet';
+import { combinedConfidence, type TextCell } from './ocrEngine';
+import { buildLayout } from './parsing/geometry';
+import { withRestoredAccents } from './parsing/accents';
+import { parseHeader } from './parsing/header';
+import { SectionParser } from './parsing/sections';
+import { bestAliasScore, looksLikeName, normalizeLabel } from './parsing/text';
+import type { Rule } from './tableDetector';
+
+export interface ParseInput {
+  cells: TextCell[];
+  rules: Rule[];
+  width: number;
+  height: number;
+  textHeight: number;
+}
+
+export interface ParseResult {
+  document: CallSheetDocument;
+  /** Blocos do template cujo título existe no documento. */
+  sectionsFound: SectionKey[];
+  /** Número de pessoas (linhas) reconhecidas. */
+  people: number;
+  /** Texto com ar de conteúdo que não foi atribuído a nenhum campo. */
+  unassigned: string[];
+}
+
+/** Mínimos para considerar que a imagem é mesmo um call sheet deste tipo. */
+const MIN_SECTIONS = 2;
+const MIN_PEOPLE = 2;
+
+export function isCallSheet(result: ParseResult): boolean {
+  return result.sectionsFound.length >= MIN_SECTIONS && result.people >= MIN_PEOPLE;
+}
+
+/** "Data: sábado | Local: Estádio" lido como uma só célula: separa nos "|". */
+function splitAtBars(cells: TextCell[]): TextCell[] {
+  const out: TextCell[] = [];
+  for (const cell of cells) {
+    const parts: TextCell['words'][] = [[]];
+    for (const word of cell.words) {
+      if (/^[|¦]+$/.test(word.text)) parts.push([]);
+      else parts[parts.length - 1].push(word);
+    }
+    const pieces = parts.filter((words) => words.length > 0);
+    if (pieces.length <= 1 && parts.length === 1) {
+      out.push(cell);
+      continue;
+    }
+    for (const words of pieces) {
+      out.push({
+        text: words.map((word) => word.text).join(' '),
+        confidence: combinedConfidence(words),
+        words,
+        bbox: {
+          x0: Math.min(...words.map((word) => word.bbox.x0)),
+          y0: cell.bbox.y0,
+          x1: Math.max(...words.map((word) => word.bbox.x1)),
+          y1: cell.bbox.y1,
+        },
+      });
+    }
+  }
+  return out;
+}
+
+export function parseCallSheet(input: ParseInput, template: CallSheetTemplate): ParseResult {
+  const layout = buildLayout(splitAtBars(input.cells), input.rules, input.width, input.height, input.textHeight);
+  const blocks = new SectionParser(layout, template).parse();
+  const { header, used: headerCells } = parseHeader(layout, template, blocks.used, blocks.top);
+
+  const dividers = [...template.groups.map((group) => normalizeLabel(group.title)), ...template.genericTitles];
+  const unassigned = [
+    ...blocks.leftovers,
+    ...layout.cells.filter(
+      (cell) =>
+        !blocks.used.has(cell) &&
+        !headerCells.has(cell) &&
+        cell.yc >= blocks.top &&
+        looksLikeName(cell.text) &&
+        cell.source.confidence >= 0.5 &&
+        bestAliasScore(cell.norm, dividers) < 0.85,
+    ),
+  ]
+    .sort((a, b) => a.yc - b.yc || a.x0 - b.x0)
+    .map((cell) => cell.text);
+
+  // Acentos perdidos pelo OCR em texto em maiúsculas.
+  for (const rows of Object.values(blocks.sections)) {
+    for (const row of rows) {
+      for (const key of Object.keys(row) as (keyof typeof row)[]) {
+        if (key === 'id') continue;
+        const field = row[key];
+        if (field && typeof field === 'object') row[key] = withRestoredAccents(field);
+      }
+    }
+  }
+  for (const definition of template.headerFields) header[definition.key] = withRestoredAccents(header[definition.key]);
+
+  const people = Object.values(blocks.sections).reduce((total, rows) => total + rows.length, 0);
+  return {
+    // As linhas fixas do template (ex.: Início da Montagem) entram depois de contar o que foi lido.
+    document: withFixedRows({ documentType: 'call_sheet', template: template.id, header, sections: blocks.sections }, template),
+    sectionsFound: [...blocks.found],
+    people,
+    unassigned,
+  };
+}
