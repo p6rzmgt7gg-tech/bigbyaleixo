@@ -1,2 +1,2 @@
 # Aplicação de página única: todas as rotas (/process, /preview, /pdf) servem o index.html.
-/*    /index.html   200
+# Aplicação de página única: todas as rotas (/process, /preview, /pdf) servem o index.html.
