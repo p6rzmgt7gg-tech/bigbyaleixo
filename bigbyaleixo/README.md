@@ -1,4 +1,4 @@
-# BIG by Aleixo
+# BIG - Broadcast Information Generator
 
 **CALL SHEET → PDF.** Aplicação web que lê a imagem (JPG/PNG, ou HEIC no Safari) de um call sheet de produção broadcast, identifica os campos, mostra-os para validação e correção, e gera um PDF estruturado e profissional — com texto real, pesquisável e selecionável.
 
@@ -59,7 +59,7 @@ O template `CALL SHEET — TEMPLATE 001` (`src/templates/callSheet001.ts`) defin
 - **Equipa**: Produtor, Produtor Cliente, Realizador, Ass. Realização, Anotadora;
 - **Técnica**: Chefe Técnico, CCU, Resp. Material, DSNG / RF, Cablecam;
 - **listas**: Op. Câmara, Op. EVS, Op. Som, Ass. Som, Ass. Vídeo, Tec. VAR;
-- **tabelas**: Plano de Trabalho (fase, hora, descrição, meios; começa sempre com Início da Montagem, Testes e Almoço, com horas calculadas do KO: 5 h antes, 3 h antes e 2 h 30 antes; e acaba com a hora prevista de desmontagem, KO + 90 min + 1 h, e de chegada ao armazém, 1 h 30 depois; tudo em "Confirmar") e Logística / Transportes (condutor, viatura, passageiros).
+- **tabelas**: Plano de Trabalho (fase, hora, descrição, meios; começa sempre com Início da Montagem, Testes e Almoço, e acaba com a hora prevista de desmontagem e de chegada ao armazém; as horas ficam por preencher) e Logística / Transportes (condutor, viatura, passageiros).
 
 O parser aceita as disposições habituais, mesmo misturadas na mesma folha:
 

@@ -36,11 +36,11 @@ export function slugify(text: string, maxLength = 60): string {
 }
 
 /**
- * Nome do PDF: BIGbyAleixo_[evento]_[data].pdf, ou BIGbyAleixo_[data].pdf sem evento.
+ * Nome do PDF: BIG_[evento]_[data].pdf, ou BIG_[data].pdf sem evento.
  * Se o documento não tiver data, usa-se o dia em que o PDF é gerado.
  */
 export function pdfFileName(document: CallSheetDocument, now: Date = new Date()): string {
   const event = slugify(document.header.event.value);
   const date = slugify(document.header.date.value) || now.toISOString().slice(0, 10);
-  return ['BIGbyAleixo', event, date].filter(Boolean).join('_') + '.pdf';
+  return ['BIG', event, date].filter(Boolean).join('_') + '.pdf';
 }

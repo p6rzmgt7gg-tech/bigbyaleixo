@@ -5,11 +5,12 @@
  */
 import { withFixedRows } from '../templates/fixedRows';
 import type { CallSheetTemplate } from '../templates';
-import type { CallSheetDocument, SectionKey } from '../types/callSheet';
+import type { CallSheetDocument, Field, HeaderKey, SectionKey, SheetRow } from '../types/callSheet';
 import { combinedConfidence, type TextCell } from './ocrEngine';
 import { buildLayout } from './parsing/geometry';
 import { withRestoredAccents } from './parsing/accents';
 import { parseHeader } from './parsing/header';
+import { parseByRegions } from './parsing/regions';
 import { SectionParser } from './parsing/sections';
 import { bestAliasScore, looksLikeName, normalizeLabel } from './parsing/text';
 import type { Rule } from './tableDetector';
@@ -71,10 +72,25 @@ function splitAtBars(cells: TextCell[]): TextCell[] {
   return out;
 }
 
+function filledFields(sections: Record<SectionKey, SheetRow[]>): number {
+  let count = 0;
+  for (const rows of Object.values(sections)) for (const row of rows) for (const [key, field] of Object.entries(row)) if (key !== 'id' && (field as Field | undefined)?.value.trim()) count++;
+  return count;
+}
+
 export function parseCallSheet(input: ParseInput, template: CallSheetTemplate): ParseResult {
   const layout = buildLayout(splitAtBars(input.cells), input.rules, input.width, input.height, input.textHeight);
-  const blocks = new SectionParser(layout, template).parse();
+  // Duas leituras: por zonas (secção primeiro, depois o significado) e a leitura por tabela.
+  // Fica a que reconhece mais campos.
+  const classic = new SectionParser(layout, template).parse();
+  const regions = parseByRegions(layout, template);
+  const blocks = regions && filledFields(regions.sections) >= filledFields(classic.sections) ? regions : classic;
   const { header, used: headerCells } = parseHeader(layout, template, blocks.used, blocks.top);
+  if (blocks === regions) {
+    for (const [key, field] of Object.entries(regions.header) as [HeaderKey, Field][]) if (field && header[key].value.trim() === '') header[key] = field;
+  }
+  // Texto solto no canto superior esquerdo (o nome no logótipo) não é informação do cabeçalho.
+  header.others = header.others.filter((extra) => extra.label.trim() !== '' || !extra.field.bbox || extra.field.bbox.x1 > input.width * 0.3);
 
   const dividers = [...template.groups.map((group) => normalizeLabel(group.title)), ...template.genericTitles];
   const unassigned = [

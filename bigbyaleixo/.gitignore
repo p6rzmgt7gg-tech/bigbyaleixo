@@ -1,0 +1,7 @@
+node_modules
+dist
+# Copiado de node_modules por scripts/copy-ocr-assets.mjs
+public/ocr
+*.local
+.DS_Store
+.wrangler

@@ -3,6 +3,7 @@
  * edições do utilizador. "Guardar dados" grava os dados estruturados no sessionStorage
  * deste separador, para sobreviverem a um recarregamento; a imagem original nunca é gravada.
  */
+import type { PdfSections } from '../pdf/pdfGenerator';
 import { withComputedTimes, withFixedRows } from '../templates/fixedRows';
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react';
 import type { AnalysisResult } from '../ocr/pipeline';
@@ -31,6 +32,8 @@ export interface SessionState {
   logo: SessionLogo | null;
   /** Mapa de câmaras do jogo (imagem), mostrado no PDF entre a logística e as observações. */
   cameraMap: SessionLogo | null;
+  /** Secções opcionais a incluir no PDF. */
+  pdfSections: PdfSections;
   /** Nome do ficheiro de origem (mantém-se depois de recarregar a página). */
   fileName: string | null;
   document: CallSheetDocument | null;
@@ -58,6 +61,7 @@ export type SessionAction =
   | { type: 'logo-removed' }
   | { type: 'camera-map-set'; image: SessionLogo }
   | { type: 'camera-map-removed' }
+  | { type: 'pdf-section-toggled'; key: keyof PdfSections; include: boolean }
   | { type: 'reset' };
 
 const STORAGE_KEY = 'big-by-aleixo:session';
@@ -69,7 +73,9 @@ interface StoredSession {
   savedAt: number;
 }
 
-const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
+const ALL_SECTIONS: PdfSections = { logistics: true, notes: true, cameraMap: true };
+
+const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, pdfSections: ALL_SECTIONS, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
 
 /** Documento vazio segundo o template, para preenchimento manual. */
 export function emptyDocument(): CallSheetDocument {
@@ -113,6 +119,8 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
       return { ...state, cameraMap: action.image };
     case 'camera-map-removed':
       return { ...state, cameraMap: null };
+    case 'pdf-section-toggled':
+      return { ...state, pdfSections: { ...state.pdfSections, [action.key]: action.include } };
     case 'analysis-finished':
       return { ...state, document: action.result.document, unassigned: action.result.unassigned, dirty: false, savedAt: null };
     case 'manual-started':

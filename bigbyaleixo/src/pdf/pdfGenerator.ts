@@ -25,9 +25,18 @@ export interface PdfLogo {
   type: 'png' | 'jpg';
 }
 
+/** Secções opcionais do PDF (os dados continuam no documento; só não são exportados). */
+export interface PdfSections {
+  logistics: boolean;
+  notes: boolean;
+  cameraMap: boolean;
+}
+
 export interface PdfOptions {
+  /** Por omissão, todas incluídas. */
+  include?: Partial<PdfSections>;
   fonts: PdfFonts;
-  /** Logótipo para o canto superior esquerdo. Sem logótipo, aparece a marca BIG by Aleixo. */
+  /** Logótipo para o canto superior esquerdo. Sem logótipo, aparece a marca BIG. */
   logo?: PdfLogo | null;
   /** Mapa de câmaras (imagem), entre a logística e as observações. */
   cameraMap?: PdfLogo | null;
@@ -45,7 +54,7 @@ type Weight = 'regular' | 'medium' | 'semibold' | 'bold';
 
 /** Altura das maiúsculas da Barlow Condensed, em fração do corpo. */
 const CAP_HEIGHT = 0.7;
-const BRAND = 'BIG by Aleixo';
+const BRAND = 'BIG - Broadcast Information Generator';
 
 function color([r, g, b]: Rgb) {
   return rgb(r, g, b);
@@ -563,7 +572,7 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
   const top = PAGE.marginTop;
   const height = SPACE.mastheadHeight;
 
-  // Logótipo (ou a marca BIG by Aleixo).
+  // Logótipo (ou a marca BIG).
   if (logo) {
     const scale = Math.min(SPACE.logoWidth / logo.width, (height - 8) / logo.height);
     const width = logo.width * scale;
@@ -571,7 +580,6 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
     canvas.image(logo, PAGE.marginX, top + (height - logoHeight) / 2, width, logoHeight);
   } else {
     canvas.text('BIG', PAGE.marginX, top + 12, 'bold', 38, COLOR.ink, 38);
-    canvas.text('by Aleixo', PAGE.marginX + type.width('BIG', 'bold', 38) + 4, top + 12 + 38 * 0.24, 'medium', 14, COLOR.ink, 38 * 0.76);
   }
 
   // PF e dia, à direita de um filete vertical.
@@ -704,7 +712,8 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
     bold: await embed(options.fonts.bold),
   });
   const logo = await embedLogo(pdf, options.logo);
-  const cameraMap = await embedLogo(pdf, options.cameraMap);
+  const include: PdfSections = { logistics: true, notes: true, cameraMap: true, ...options.include };
+  const cameraMap = include.cameraMap ? await embedLogo(pdf, options.cameraMap) : null;
 
   const get = (key: HeaderKey): string => document.header[key].value.trim();
   const title = [get('competition'), get('event')].filter(Boolean).join(' - ') || 'CALL SHEET';
@@ -759,7 +768,7 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
   const plan = tables.find((section) => section.key === 'workPlan');
   const transport = tables.find((section) => section.key === 'drivers');
   const planBlock = plan && rowsOf(plan).length > 0 ? workPlanBlock(type, plan, rowsOf(plan), half) : null;
-  const logistics = transport ? logisticsBlock(type, transport, document, template.headerFields.filter((field) => field.group === 'logistics'), half) : null;
+  const logistics = transport && include.logistics ? logisticsBlock(type, transport, document, template.headerFields.filter((field) => field.group === 'logistics'), half) : null;
   const locationBlock = !cameraMap && location.text !== '' ? labelLineBlock(type, location.label, location.text, half) : null;
   const above = [planBlock, logistics, locationBlock].filter((block): block is Block => block !== null);
   const notesField = template.headerFields.find((field) => field.key === 'notes');
@@ -777,7 +786,7 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
     flow: true,
     columns: [
       { width: half, blocks: left },
-      { width: half, blocks: [...above, notes] },
+      { width: half, blocks: include.notes ? [...above, notes] : above },
     ],
   });
   if (mapBelow && cameraMap) {

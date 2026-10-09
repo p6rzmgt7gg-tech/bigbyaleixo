@@ -108,10 +108,10 @@ describe('ficheiros', () => {
 describe('PDF', () => {
   const document = parseCallSheet({ cells: sheet(), rules: [], width: 800, height: 400, textHeight: 10 }, DEFAULT_TEMPLATE).document;
 
-  it('dá o nome BIGbyAleixo_[evento]_[data].pdf, ou sem evento', () => {
-    expect(pdfFileName(document)).toBe('BIGbyAleixo_quarta-7-out.pdf');
+  it('dá o nome BIG_[evento]_[data].pdf, ou sem evento', () => {
+    expect(pdfFileName(document)).toBe('BIG_quarta-7-out.pdf');
     const withEvent = { ...document, header: { ...document.header, event: { value: 'Final da Taça', confidence: 1 } } };
-    expect(pdfFileName(withEvent)).toBe('BIGbyAleixo_Final-da-Taca_quarta-7-out.pdf');
+    expect(pdfFileName(withEvent)).toBe('BIG_Final-da-Taca_quarta-7-out.pdf');
   });
 
   it('gera um PDF com texto real e pagina quando é preciso', async () => {
@@ -193,5 +193,57 @@ describe('formato com cargos, plano de trabalho e logística', () => {
     expect(row.means?.value).toBe('CAM 05');
     // "CAM 05" no plano não é uma câmara.
     expect(document.sections.cameras).toEqual([]);
+  });
+});
+
+describe('leitura por zonas (secção primeiro)', () => {
+  // Folha em duas colunas: LOGÍSTICA e PLANO DE TRABALHO à esquerda, EQUIPA à direita.
+  const cells: TextCell[] = [
+    cell('LIGA EXEMPLO', 200, 10),
+    cell('KO: 15:30', 200, 40),
+    cell('LOGÍSTICA', 20, 100),
+    cell('Saída: 08:30', 20, 130),
+    cell('CONDUTOR', 20, 160), cell('VIATURA', 130, 160), cell('PASSAGEIROS', 240, 160),
+    cell('ANA EXEMPLO', 20, 180), cell('CARRO UM', 130, 180), cell('BRUNO TESTE,', 240, 180),
+    cell('CARLA MODELO', 240, 200),
+    cell('DIOGO', 20, 220), cell('CARRO -', 130, 220), cell('EVA SILVA', 240, 220),
+    cell('TESTE', 20, 240), cell('DOIS', 130, 240),
+    cell('PLANO DE TRABALHO', 20, 300),
+    cell('Pré-jogo:', 20, 330),
+    cell('- 13H30 - CHEGADA DA EQUIPA', 20, 350),
+    cell('- 15H20 - LINE UP - CAM 05', 20, 370),
+    cell('EQUIPA', 420, 100),
+    cell('Realizador: RUI EXEMPLO', 420, 130),
+    cell('Câmaras', 420, 160),
+    cell('1:', 420, 180), cell('PEDRO UM', 500, 180),
+    cell('TT', 420, 200), cell('PEDRO DOIS', 500, 200),
+    cell('3:', 420, 220), cell('PEDRO TRES', 500, 220),
+  ];
+  const { document } = parseCallSheet({ cells, rules: [], width: 700, height: 500, textHeight: 12 }, DEFAULT_TEMPLATE);
+
+  it('mantém viatura, condutor e passageiros de cada registo juntos', () => {
+    expect(document.sections.drivers.map((r) => [r.name?.value, r.vehicle?.value, r.passengers?.value])).toEqual([
+      ['ANA EXEMPLO', 'CARRO UM', 'BRUNO TESTE, CARLA MODELO'],
+      ['DIOGO TESTE', 'CARRO - DOIS', 'EVA SILVA'],
+    ]);
+    expect(document.header.departure.value).toBe('08:30');
+  });
+
+  it('não desloca os nomes das câmaras quando um número não se lê', () => {
+    expect(document.sections.cameras.map((r) => [r.number?.value, r.name?.value])).toEqual([
+      ['1', 'PEDRO UM'],
+      ['2', 'PEDRO DOIS'],
+      ['3', 'PEDRO TRES'],
+    ]);
+    expect(document.sections.realization[0].name?.value).toBe('RUI EXEMPLO');
+  });
+
+  it('separa hora, descrição e meios no plano, sem confundir com o KO', () => {
+    const read = document.sections.workPlan.filter((r) => r.phase?.value === 'PRÉ-JOGO');
+    expect(read.map((r) => [r.time?.value, r.description?.value, r.means?.value])).toEqual([
+      ['13:30', 'CHEGADA DA EQUIPA', ''],
+      ['15:20', 'LINE UP', 'CAM 05'],
+    ]);
+    expect(document.header.kickoff.value).toBe('15:30');
   });
 });

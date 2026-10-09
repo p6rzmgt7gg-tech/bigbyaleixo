@@ -1,3 +1,4 @@
+import { PdfOptions } from '../components/PdfOptions';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { HeaderEditor } from '../components/HeaderEditor';
@@ -165,6 +166,8 @@ export function PreviewPage() {
             <h2 className="block__title">OBSERVAÇÕES</h2>
             <HeaderFields fields={template.headerFields.filter((field) => field.group === 'notes')} header={document.header} onEdit={editHeader} onLocate={locate} />
           </section>
+
+          <PdfOptions />
 
           <div className="actionbar">
             <div className="actionbar__group">

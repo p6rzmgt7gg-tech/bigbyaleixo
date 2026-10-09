@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowIcon } from '../components/Icons';
 import { ImagePreview } from '../components/ImagePreview';
 import { UploadArea } from '../components/UploadArea';
 import { Wordmark } from '../components/Wordmark';
@@ -51,14 +50,7 @@ export function HomePage() {
           <h1>
             <Wordmark variant="hero" />
           </h1>
-          <p className="home__subtitle">
-            CALL SHEET <ArrowIcon />
-            <span className="visually-hidden">para</span> PDF
-          </p>
         </div>
-        <p className="home__lede">
-          Carregue a imagem de um call sheet. A aplicação lê os campos, mostra-os para corrigir o que for preciso e gera um PDF estruturado.
-        </p>
       </div>
 
       {state.source ? (
@@ -86,7 +78,6 @@ export function HomePage() {
       )}
 
       <div className="home__actions">
-        <p className="home__privacy">A imagem é lida neste browser e nunca é enviada para fora do seu computador. Nada fica guardado depois de fechar o separador.</p>
         <button type="button" className="button button--primary" disabled={!state.source} onClick={() => navigate('/process')}>
           Processar Call Sheet
         </button>

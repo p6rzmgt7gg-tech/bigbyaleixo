@@ -106,22 +106,20 @@ export const callSheet001: CallSheetTemplate = {
         { key: 'description', label: 'Descrição', aliases: ['descricao'], align: 'left', weight: 5 },
         { key: 'means', label: 'Meios / Obs.', aliases: ['meios obs', 'meios', 'obs'], align: 'left', weight: 1.4 },
       ],
-      // Antes do pré-jogo. Horas habituais: montagem 5 h antes do KO, testes 2 h depois, almoço 30 min depois dos testes.
+      // Antes do pré-jogo. A hora fica por preencher: só entra a que vier do documento ou do utilizador.
       fixedRows: [
-        { values: { description: 'Início da Montagem' }, aliases: ['inicio da montagem', 'inicio montagem', 'montagem'], minutesFromKickoff: -300 },
-        { values: { description: 'Testes' }, aliases: ['testes', 'teste'], minutesFromKickoff: -180 },
-        { values: { description: 'Almoço' }, aliases: ['almoco'], minutesFromKickoff: -150 },
-        // No fim do pós-jogo: desmontagem 1 h depois do fim dos 90 minutos; chegada ao armazém 1 h 30 depois.
+        { values: { description: 'Início da Montagem' }, aliases: ['inicio da montagem', 'inicio montagem', 'montagem']},
+        { values: { description: 'Testes' }, aliases: ['testes', 'teste']},
+        { values: { description: 'Almoço' }, aliases: ['almoco']},
+        // No fim do pós-jogo (hora por preencher).
         {
           values: { description: 'Hora prevista de desmontagem' },
           aliases: ['hora prevista de desmontagem', 'desmontagem', 'inicio da desmontagem'],
-          minutesFromKickoff: 90 + 60,
           position: 'end',
         },
         {
           values: { description: 'Hora prevista de chegada ao armazém' },
           aliases: ['hora prevista de chegada ao armazem', 'chegada ao armazem', 'chegada armazem', 'hora prevista de chegada armazem'],
-          minutesFromKickoff: 90 + 60 + 90,
           position: 'end',
         },
       ],

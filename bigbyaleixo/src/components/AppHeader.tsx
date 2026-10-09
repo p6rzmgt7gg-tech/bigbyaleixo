@@ -16,7 +16,7 @@ export function AppHeader() {
   );
   return (
     <header className="topbar">
-      <Link to="/" aria-label="BIG by Aleixo, início">
+      <Link to="/" aria-label="BIG - Broadcast Information Generator, início">
         <Wordmark variant="bar" />
       </Link>
       <nav aria-label="Passos">
