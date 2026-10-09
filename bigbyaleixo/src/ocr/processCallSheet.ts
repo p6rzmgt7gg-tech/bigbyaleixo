@@ -31,7 +31,9 @@ function prepareInWorker(source: RgbaImage): Promise<PreparedImage> {
       finish(() => (response.ok ? resolve(response.prepared) : reject(new PipelineError('unreadable'))));
     };
     worker.onerror = () => finish(() => reject(new PipelineError('unreadable')));
-    worker.postMessage(source, [source.data.buffer]);
+    // Envia uma cópia: o original continua disponível para ler as cores e as barras da folha.
+    const copy = { data: new Uint8ClampedArray(source.data), width: source.width, height: source.height };
+    worker.postMessage(copy, [copy.data.buffer]);
   });
 }
 

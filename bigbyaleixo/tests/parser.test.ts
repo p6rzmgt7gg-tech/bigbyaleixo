@@ -247,3 +247,27 @@ describe('leitura por zonas (secção primeiro)', () => {
     expect(document.header.kickoff.value).toBe('15:30');
   });
 });
+
+describe('folha em grelha (barras dos títulos)', () => {
+  it('encontra as barras de cada coluna mesmo quando se tocam', async () => {
+    const { findBars } = await import('../src/ocr/parsing/sheetGrid');
+    const width = 600;
+    const height = 200;
+    const data = new Uint8ClampedArray(width * height * 4).fill(255);
+    const paint = (x0: number, x1: number, y0: number, y1: number, value: number) => {
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) data.set([value, value, value, 255], (y * width + x) * 4);
+    };
+    // Uma linha de três barras encostadas e, mais abaixo, só as duas da direita; texto branco no meio.
+    paint(0, 600, 20, 36, 102);
+    paint(30, 90, 25, 31, 255);
+    paint(200, 600, 100, 116, 102);
+    const bars = findBars({ data, width, height }, 10);
+    expect(bars.map((bar) => [Math.round(bar.x0 / 10) * 10, bar.y0])).toEqual([
+      [0, 20],
+      [200, 20],
+      [400, 20],
+      [200, 100],
+      [400, 100],
+    ]);
+  });
+});

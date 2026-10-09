@@ -590,7 +590,7 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
   if (pf !== '' || day !== '') {
     canvas.line(ruleX, top + 6, ruleX, top + height - 4, 1.2, COLOR.ink);
     const center = ruleX + (PAGE.width - PAGE.marginX - ruleX) / 2 + 4;
-    const pfText = pf === '' ? '' : /^pf/i.test(pf) ? pf : `PF ${pf}`;
+    const pfText = pf === '' ? '' : /^\d/.test(pf) ? `PF ${pf}` : pf;
     const pfSize = type.fit(pfText, 'bold', SIZE.pf, SPACE.pfWidth - 12, 16);
     canvas.centered(pfText, center, top + 6, 'bold', pfSize, COLOR.ink, SIZE.pf);
     canvas.centered(day, center, top + 6 + SIZE.pf + 2, 'semibold', type.fit(day, 'semibold', SIZE.day, SPACE.pfWidth - 8, 9), COLOR.ink, SIZE.day * 1.1);
@@ -726,7 +726,7 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
   pdf.setCreationDate(generatedAt);
   pdf.setModificationDate(generatedAt);
 
-  const runningTitle = [get('pf') && (/^pf/i.test(get('pf')) ? get('pf') : `PF ${get('pf')}`), get('event') || get('competition'), get('date')].filter(Boolean).join('   ·   ');
+  const runningTitle = [get('pf') && (/^\d/.test(get('pf')) ? `PF ${get('pf')}` : get('pf')), get('event') || get('competition'), get('date')].filter(Boolean).join('   ·   ');
   const composer = new Composer(pdf, type, runningTitle);
   drawMasthead(composer, document, logo);
   drawInfoLines(composer, document, template.headerFields);

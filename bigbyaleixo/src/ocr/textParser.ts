@@ -11,11 +11,16 @@ import { buildLayout } from './parsing/geometry';
 import { withRestoredAccents } from './parsing/accents';
 import { parseHeader } from './parsing/header';
 import { parseByRegions } from './parsing/regions';
+import { parseSheetGrid } from './parsing/sheetGrid';
+import type { SectionsResult } from './parsing/sections';
+import type { RgbaImage } from './raster';
 import { SectionParser } from './parsing/sections';
 import { bestAliasScore, looksLikeName, normalizeLabel } from './parsing/text';
 import type { Rule } from './tableDetector';
 
 export interface ParseInput {
+  /** A imagem original (para ler cores e as barras dos títulos). Opcional. */
+  image?: RgbaImage;
   cells: TextCell[];
   rules: Rule[];
   width: number;
@@ -84,10 +89,19 @@ export function parseCallSheet(input: ParseInput, template: CallSheetTemplate): 
   // Fica a que reconhece mais campos.
   const classic = new SectionParser(layout, template).parse();
   const regions = parseByRegions(layout, template);
-  const blocks = regions && filledFields(regions.sections) >= filledFields(classic.sections) ? regions : classic;
+  const grid = input.image ? parseSheetGrid(layout, template, input.image) : null;
+  let blocks: SectionsResult = classic;
+  for (const candidate of [regions]) if (candidate && filledFields(candidate.sections) >= filledFields(blocks.sections)) blocks = candidate;
+  // A folha em grelha reconhece-se pelas barras dos títulos: quando há blocos suficientes, é ela que manda.
+  if (grid && grid.found.size >= 4) blocks = grid;
   const { header, used: headerCells } = parseHeader(layout, template, blocks.used, blocks.top);
-  if (blocks === regions) {
+  if (blocks === regions && regions) {
     for (const [key, field] of Object.entries(regions.header) as [HeaderKey, Field][]) if (field && header[key].value.trim() === '') header[key] = field;
+  }
+  if (blocks === grid && grid) {
+    // Folha em grelha: o cabeçalho vem só das posições conhecidas (nada de texto solto).
+    for (const definition of template.headerFields) header[definition.key] = grid.header[definition.key] ?? { value: '', confidence: null };
+    header.others = [];
   }
   // Texto solto no canto superior esquerdo (o nome no logótipo) não é informação do cabeçalho.
   header.others = header.others.filter((extra) => extra.label.trim() !== '' || !extra.field.bbox || extra.field.bbox.x1 > input.width * 0.3);

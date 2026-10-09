@@ -85,7 +85,7 @@ export async function analyzeImage(source: RgbaImage, engine: OcrEngine, templat
 
   // 4. Campos segundo o template.
   report('fields');
-  const parsed = parseCallSheet({ cells, rules, width, height, textHeight }, template);
+  const parsed = parseCallSheet({ image: source, cells, rules, width, height, textHeight }, template);
   const result: AnalysisResult = { ...parsed, imageWidth: width, imageHeight: height };
   if (!isCallSheet(parsed)) throw new PipelineError('not_a_call_sheet', result);
   report('done');

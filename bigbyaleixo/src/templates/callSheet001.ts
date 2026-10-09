@@ -95,6 +95,10 @@ export const callSheet001: CallSheetTemplate = {
     list('soundAssistants', 'Ass. Som', ['ass som', 'assistente de som', 'assistentes de som', 'assistente som', 'ass de som']),
     list('videoAssistants', 'Ass. Vídeo', ['ass video', 'assistente de video', 'assistentes de video', 'assistente video', 'ass de video']),
     list('varTechnicians', 'Tec. VAR', ['tec var', 'tecnico var', 'tecnicos var', 'var']),
+    list('varFinal', 'Var / Juízo Final', ['var juizo final', 'juizo final', 'var final']),
+    list('sky', '4 Sky', ['4 sky', 'sky']),
+    list('lighting', 'Iluminação', ['iluminacao', 'luz']),
+    list('graphics', 'Grafismo', ['grafismo', 'grafismo wtvision', 'graficos']),
     {
       key: 'workPlan',
       title: 'PLANO DE TRABALHO',
