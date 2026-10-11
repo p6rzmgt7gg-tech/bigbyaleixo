@@ -69,6 +69,7 @@ export type SessionAction =
   | { type: 'cell-edited'; section: SectionKey; rowId: string; column: ColumnKey; value: string }
   | { type: 'row-added'; section: SectionKey }
   | { type: 'row-removed'; section: SectionKey; rowId: string }
+  | { type: 'row-moved'; section: SectionKey; rowId: string; delta: -1 | 1 }
   | { type: 'saved'; at: number }
   | { type: 'logo-set'; logo: SessionLogo }
   | { type: 'logo-removed' }
@@ -192,7 +193,7 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
           },
         };
         // Mudar a hora no local acerta a Reunião e o Início de Montagem (se não tiverem sido escritos à mão).
-        return action.section === 'workPlan' ? withArrivalSteps(edited) : edited;
+        return action.section === 'workPlan' ? withArrivalSteps(edited, false) : edited;
       });
     case 'row-added':
       return editDocument(state, (document) => ({
@@ -204,6 +205,15 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
         ...document,
         sections: { ...document.sections, [action.section]: (document.sections[action.section] ?? []).filter((row) => row.id !== action.rowId) },
       }));
+    case 'row-moved':
+      return editDocument(state, (document) => {
+        const rows = [...(document.sections[action.section] ?? [])];
+        const from = rows.findIndex((row) => row.id === action.rowId);
+        const to = from + action.delta;
+        if (from < 0 || to < 0 || to >= rows.length) return document;
+        [rows[from], rows[to]] = [rows[to], rows[from]];
+        return { ...document, sections: { ...document.sections, [action.section]: rows } };
+      });
     case 'saved':
       return { ...state, dirty: false, savedAt: action.at };
   }

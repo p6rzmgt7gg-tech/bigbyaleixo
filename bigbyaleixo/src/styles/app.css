@@ -1409,3 +1409,29 @@ td.table__confidence {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+.table__move {
+  width: 56px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.table__move button {
+  width: 26px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--graphite);
+}
+
+.table__move button:hover:not(:disabled) {
+  color: var(--ink, #000);
+}
+
+.table__move button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}

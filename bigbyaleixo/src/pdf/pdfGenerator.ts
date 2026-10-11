@@ -11,7 +11,7 @@ import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
 import { vehicleCode, withDepartures, withTeamLogistics } from '../utils/logistics';
 import { formatDateTime, pdfFileName } from '../utils/formatters';
-import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, VEHICLE_TINT, type Rgb } from './pdfStyles';
+import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, VEHICLE_TINTS, type Rgb } from './pdfStyles';
 
 /** Ficheiros TTF da Barlow Condensed (ver src/pdf/fonts). */
 export interface PdfFonts {
@@ -419,8 +419,8 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
         });
       }
       for (const row of group.rows) {
-        // Viaturas alternadas com e sem fundo suave: vê-se onde começa e acaba a equipa de cada uma.
-        const tinted = vehicleIndex++ % 2 === 0;
+        // Todas as viaturas com fundo suave, alternando dois tons: vê-se onde começa e acaba a equipa de cada uma.
+        const tint = VEHICLE_TINTS[vehicleIndex++ % VEHICLE_TINTS.length];
         const content = textRow(
             type,
             layout.map((entry) => ({
@@ -435,7 +435,7 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
         lines.push({
           height: content.height + 3,
           draw: (canvas, left, top) => {
-            if (tinted) canvas.rect(left - 3, top + 1, width + 3, content.height + 1, VEHICLE_TINT);
+            canvas.rect(left - 3, top + 1, width + 3, content.height + 1, tint);
             content.draw(canvas, left, top + 1);
           },
         });
@@ -872,9 +872,10 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
       notesLater = notesText;
       if (notesText === '') notesHere = notesBlock(type, notesTitle, '', half, SPACE.notesMinHeight);
     } else {
-      const { head, rest } = splitNotes(type, notesText, half, capacity);
-      notesHere = notesBlock(type, notesTitle, head, half, room);
-      notesLater = rest;
+      // Se não couberem todas na primeira página, passam inteiras para a seguinte.
+      const { rest } = splitNotes(type, notesText, half, capacity);
+      if (rest === '') notesHere = notesBlock(type, notesTitle, notesText, half, room);
+      else notesLater = notesText;
     }
   }
 

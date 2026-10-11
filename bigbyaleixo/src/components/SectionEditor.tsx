@@ -9,13 +9,15 @@ interface SectionEditorProps {
   onEdit: (section: SectionKey, rowId: string, column: ColumnKey, value: string) => void;
   onAdd: (section: SectionKey) => void;
   onRemove: (section: SectionKey, rowId: string) => void;
+  /** Permite reordenar as linhas (plano de trabalho). */
+  onMove?: (section: SectionKey, rowId: string, delta: -1 | 1) => void;
   onLocate: (bbox: BBox | undefined) => void;
   /** Campos extra a mostrar entre o título e a tabela (ex.: saída e origem da logística). */
   children?: ReactNode;
 }
 
 /** Um bloco do call sheet (Câmaras, EVS, …): título, tabela editável e botão para acrescentar linhas. */
-export const SectionEditor = memo(function SectionEditor({ section, rows, onEdit, onAdd, onRemove, onLocate, children }: SectionEditorProps) {
+export const SectionEditor = memo(function SectionEditor({ section, rows, onEdit, onAdd, onRemove, onMove, onLocate, children }: SectionEditorProps) {
   return (
     <section className="block" aria-label={section.title}>
       <h2 className="block__title">
@@ -29,6 +31,7 @@ export const SectionEditor = memo(function SectionEditor({ section, rows, onEdit
         rows={rows}
         onEdit={(rowId, column, value) => onEdit(section.key, rowId, column, value)}
         onRemove={(rowId) => onRemove(section.key, rowId)}
+        onMove={onMove ? (rowId, delta) => onMove(section.key, rowId, delta) : undefined}
         onLocate={onLocate}
       />
       <div className="block__foot">

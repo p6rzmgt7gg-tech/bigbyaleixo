@@ -77,6 +77,7 @@ export function PreviewPage() {
   const editHeader = useCallback((key: HeaderKey, value: string) => dispatch({ type: 'header-edited', key, value }), [dispatch]);
   const addRow = useCallback((section: SectionKey) => dispatch({ type: 'row-added', section }), [dispatch]);
   const removeRow = useCallback((section: SectionKey, rowId: string) => dispatch({ type: 'row-removed', section, rowId }), [dispatch]);
+  const moveRow = useCallback((section: SectionKey, rowId: string, delta: -1 | 1) => dispatch({ type: 'row-moved', section, rowId, delta }), [dispatch]);
   const departuresSection = template.sections.find((section) => section.key === 'departures');
 
   if (!document) return <Navigate to={state.source ? '/process' : '/'} replace />;
@@ -154,6 +155,7 @@ export function PreviewPage() {
                   onEdit={editCell}
                   onAdd={addRow}
                   onRemove={removeRow}
+                  onMove={section.key === 'workPlan' ? moveRow : undefined}
                   onLocate={locate}
                 >
                   {section.key === 'drivers' && departuresSection && (

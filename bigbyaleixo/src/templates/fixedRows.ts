@@ -75,7 +75,7 @@ const ARRIVAL_STEPS = [
  * A seguir à "Hora no local" do plano de trabalho entram a Reunião (+10 min) e o Início de
  * Montagem (+15 min). As horas acompanham a hora no local enquanto não forem escritas à mão.
  */
-export function withArrivalSteps(document: CallSheetDocument): CallSheetDocument {
+export function withArrivalSteps(document: CallSheetDocument, insert = true): CallSheetDocument {
   const rows = document.sections.workPlan ?? [];
   const arrivalIndex = rows.findIndex((row) => ARRIVAL_ALIASES.includes(plain(row.description?.value ?? '')));
   if (arrivalIndex < 0) return document;
@@ -87,6 +87,8 @@ export function withArrivalSteps(document: CallSheetDocument): CallSheetDocument
     const time: Field = arrival === null ? { value: '', confidence: null } : { value: formatClock(arrival + step.minutes), confidence: COMPUTED_TIME_CONFIDENCE };
     const existing = next.findIndex((row) => step.aliases.includes(plain(row.description?.value ?? '')));
     if (existing < 0) {
+      // Ao editar, uma linha apagada pelo utilizador não volta a aparecer.
+      if (!insert) continue;
       next.splice(insertAt, 0, {
         id: createRowId(),
         time,
