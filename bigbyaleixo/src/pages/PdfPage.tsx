@@ -20,7 +20,7 @@ export function PdfPage() {
   const [failed, setFailed] = useState(false);
   const [shown, setShown] = useState(false);
   const [round, setRound] = useState(0);
-  const { document, cameraMap, pdfSections, clientLogo } = state;
+  const { document, cameraMap, extraFiles, pdfSections, clientLogo } = state;
 
   useEffect(() => {
     if (!document) return;
@@ -38,6 +38,7 @@ export function PdfPage() {
           logo: await loadDefaultLogo(),
           clientLogo: chosen ? await loadClientLogo(chosen) : null,
           cameraMap,
+          extraFiles,
           include: pdfSections,
         });
       })
@@ -55,7 +56,7 @@ export function PdfPage() {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [document, cameraMap, pdfSections, clientLogo, round]);
+  }, [document, cameraMap, extraFiles, pdfSections, clientLogo, round]);
 
   const rendered = useCallback((ok: boolean) => {
     setShown(ok);

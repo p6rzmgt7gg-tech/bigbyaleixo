@@ -1374,3 +1374,24 @@ td.table__confidence {
   border: 1px solid var(--rule);
   font: inherit;
 }
+
+.extra-files {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  width: 100%;
+}
+
+.extra-files__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.extra-files__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}

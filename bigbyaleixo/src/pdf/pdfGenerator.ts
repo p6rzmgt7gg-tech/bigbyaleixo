@@ -6,7 +6,7 @@
  * A imagem original não entra no PDF.
  */
 import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
+import { PDFDocument, PDFEmbeddedPage, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates';
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
 import { withTeamLogistics } from '../utils/logistics';
@@ -41,10 +41,17 @@ export interface PdfOptions {
   logo?: PdfLogo | null;
   /** Logótipo do cliente (canto superior direito, por cima da data). */
   clientLogo?: PdfLogo | null;
-  /** Mapa de câmaras (imagem), entre a logística e as observações. */
+  /** Mapa de câmaras (imagem), na página seguinte. */
   cameraMap?: PdfLogo | null;
+  /** Ficheiros acrescentados a seguir ao mapa (PDF: todas as páginas; imagens: uma página cada). */
+  extraFiles?: PdfExtraFile[];
   /** Momento da geração (rodapé e, na falta de data, nome do ficheiro). */
   generatedAt?: Date;
+}
+
+export interface PdfExtraFile {
+  kind: 'pdf' | 'png' | 'jpg';
+  bytes: Uint8Array;
 }
 
 export interface GeneratedPdf {
@@ -157,8 +164,9 @@ class Canvas {
     this.page.drawLine({ start: { x: x0, y: PAGE.height - top0 }, end: { x: x1, y: PAGE.height - top1 }, thickness, color: color(tint) });
   }
 
-  image(image: PDFImage, x: number, top: number, width: number, height: number): void {
-    this.page.drawImage(image, { x, y: PAGE.height - top - height, width, height });
+  image(image: PDFImage | PDFEmbeddedPage, x: number, top: number, width: number, height: number): void {
+    if (image instanceof PDFEmbeddedPage) this.page.drawPage(image, { x, y: PAGE.height - top - height, width, height });
+    else this.page.drawImage(image, { x, y: PAGE.height - top - height, width, height });
   }
 }
 
@@ -400,11 +408,11 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
 
 
 /** Mapa de câmaras: a imagem à largura da coluna, sem passar a altura máxima. */
-function imageBlock(type: Typesetter, title: string, image: PDFImage, width: number, maxHeight: number, caption?: { label: string; text: string }): Block {
+function imageBlock(type: Typesetter, title: string, image: PDFImage | PDFEmbeddedPage, width: number, maxHeight: number, caption?: { label: string; text: string }): Block {
   const scale = Math.min(width / image.width, maxHeight / image.height);
   const drawWidth = image.width * scale;
   const drawHeight = image.height * scale;
-  const lines: Line[] = [heading(title)];
+  const lines: Line[] = title !== '' ? [heading(title)] : [];
   // Legenda ("Local: …") por cima da imagem, centrada com ela.
   if (caption && caption.text !== '') {
     const label = `${caption.label}: `;
@@ -445,6 +453,52 @@ function notesBlock(type: Typesetter, title: string, notes: string, width: numbe
           paragraphs.forEach((line, index) => canvas.text(line, x + padding, top + padding + index * step, 'regular', SIZE.body, COLOR.navy, step));
         },
       },
+    ],
+  };
+}
+
+const NOTES_PADDING = 8;
+
+/** Divide as observações: as linhas que cabem na caixa da 1.ª página e o texto que sobra. */
+function splitNotes(type: Typesetter, notes: string, width: number, maxLines: number): { head: string; rest: string } {
+  const paragraphs = notes.split(/\n+/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  const head: string[] = [];
+  let used = 0;
+  for (let index = 0; index < paragraphs.length; index++) {
+    const lines = type.wrap(paragraphs[index], 'regular', SIZE.body, width - NOTES_PADDING * 2);
+    if (used + lines.length <= maxLines) {
+      head.push(paragraphs[index]);
+      used += lines.length;
+      continue;
+    }
+    const fit = maxLines - used;
+    if (fit > 0) head.push(lines.slice(0, fit).join(' '));
+    const rest = [lines.slice(Math.max(fit, 0)).join(' '), ...paragraphs.slice(index + 1)];
+    return { head: head.join('\n'), rest: rest.join('\n') };
+  }
+  return { head: head.join('\n'), rest: '' };
+}
+
+/** Continuação das observações a toda a largura: uma linha de cada vez, para poder mudar de página. */
+function notesFlowBlock(type: Typesetter, title: string, notes: string, width: number): Block {
+  const lines = notes.split(/\n+/).flatMap((paragraph) => type.wrap(paragraph, 'regular', SIZE.body, width - NOTES_PADDING * 2));
+  const step = SIZE.body * SPACE.lineHeight;
+  return {
+    title,
+    lines: [
+      heading(title),
+      ...lines.map((text, index): Line => {
+        const first = index === 0;
+        const last = index === lines.length - 1;
+        const height = step + (first ? NOTES_PADDING : 0) + (last ? NOTES_PADDING : 0);
+        return {
+          height,
+          draw: (canvas, x, top) => {
+            canvas.rect(x, top, width, height, COLOR.blush);
+            canvas.text(text, x + NOTES_PADDING, top + (first ? NOTES_PADDING : 0), 'regular', SIZE.body, COLOR.navy, step);
+          },
+        };
+      }),
     ],
   };
 }
@@ -758,25 +812,69 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
   const above = [planBlock, logistics].filter((block): block is Block => block !== null);
   const notesField = template.headerFields.find((field) => field.key === 'notes');
   const notesTitle = (notesField?.label ?? 'Observações').toUpperCase();
-  const notesHeading = notesBlock(type, notesTitle, get('notes'), half, 0).lines[0].height;
+  const notesHeading = notesBlock(type, notesTitle, '', half, 0).lines[0].height;
   const aboveHeight = columnHeight(above) + (above.length > 0 ? SPACE.blockGap : 0);
-  // Observações ajustadas ao espaço que fica no fundo da primeira página.
-  const notesHeight = Math.max(SPACE.notesMinHeight, available - aboveHeight - notesHeading - 4);
-  const notes = notesBlock(type, notesTitle, get('notes'), half, notesHeight);
+  // Observações ajustadas ao espaço que fica no fundo da primeira página; o que não couber
+  // continua na página seguinte, a toda a largura e alinhado à esquerda.
+  const room = available - aboveHeight - notesHeading - 4;
+  const notesText = include.notes ? get('notes') : '';
+  const step = SIZE.body * SPACE.lineHeight;
+  const capacity = Math.floor((room - NOTES_PADDING * 2) / step);
+  let notesHere: Block | null = null;
+  let notesLater = '';
+  if (include.notes) {
+    if (room < SPACE.notesMinHeight || (capacity < 2 && notesText !== '')) {
+      // Sem espaço na 1.ª página: as observações vão todas para a seguinte.
+      notesLater = notesText;
+      if (notesText === '') notesHere = notesBlock(type, notesTitle, '', half, SPACE.notesMinHeight);
+    } else {
+      const { head, rest } = splitNotes(type, notesText, half, capacity);
+      notesHere = notesBlock(type, notesTitle, head, half, room);
+      notesLater = rest;
+    }
+  }
 
   composer.placeBand({
     flow: true,
     columns: [
       { width: half, blocks: left },
-      { width: half, blocks: include.notes ? [...above, notes] : above },
+      { width: half, blocks: notesHere ? [...above, notesHere] : above },
     ],
   });
 
+  if (notesLater !== '') {
+    if (composer.page === 0) composer.newPage();
+    const title = notesHere ? `${notesTitle} (cont.)` : notesTitle;
+    composer.placeBand({ flow: true, columns: [{ width: CONTENT_WIDTH, blocks: [notesFlowBlock(type, title, notesLater, CONTENT_WIDTH)] }] });
+  }
+
   // Mapa de câmaras na página seguinte, a toda a largura.
+  const fullRoom = (withTitle: boolean, withCaption: boolean) =>
+    composer.bottom - composer.y - (withTitle ? heading('').height : 0) - (withCaption ? SPACE.row + 2 : 0) - 8;
   if (cameraMap) {
     composer.newPage();
-    const room = composer.bottom - composer.y - heading('').height - (location.text !== '' ? SPACE.row + 2 : 0) - 8;
-    composer.placeBand({ columns: [{ width: CONTENT_WIDTH, blocks: [imageBlock(type, 'MAPA DE CÂMARAS', cameraMap, CONTENT_WIDTH, room, location)] }] });
+    const mapRoom = fullRoom(true, location.text !== '');
+    composer.placeBand({ columns: [{ width: CONTENT_WIDTH, blocks: [imageBlock(type, 'MAPA DE CÂMARAS', cameraMap, CONTENT_WIDTH, mapRoom, location)] }] });
+  }
+
+  // Ficheiros acrescentados a seguir ao mapa: cada página do PDF (ou cada imagem) numa página.
+  for (const extra of include.cameraMap ? options.extraFiles ?? [] : []) {
+    let items: (PDFImage | PDFEmbeddedPage)[] = [];
+    try {
+      if (extra.kind === 'pdf') {
+        const sourcePdf = await PDFDocument.load(extra.bytes, { ignoreEncryption: true });
+        items = await pdf.embedPages(sourcePdf.getPages());
+      } else {
+        const image = await embedLogo(pdf, { bytes: extra.bytes, type: extra.kind });
+        if (image) items = [image];
+      }
+    } catch {
+      items = [];
+    }
+    for (const item of items) {
+      composer.newPage();
+      composer.placeBand({ columns: [{ width: CONTENT_WIDTH, blocks: [imageBlock(type, '', item, CONTENT_WIDTH, fullRoom(false, false))] }] });
+    }
   }
 
   drawFooters(composer, document, generatedAt);

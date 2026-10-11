@@ -27,11 +27,21 @@ export interface SessionLogo {
   url: string;
 }
 
+/** Ficheiro acrescentado a seguir ao mapa de câmaras (só em memória). */
+export interface ExtraFile {
+  id: string;
+  name: string;
+  kind: 'pdf' | 'png' | 'jpg';
+  bytes: Uint8Array;
+}
+
 export interface SessionState {
   source: SourceImage | null;
   logo: SessionLogo | null;
   /** Mapa de câmaras do jogo (imagem), mostrado no PDF entre a logística e as observações. */
   cameraMap: SessionLogo | null;
+  /** Ficheiros (PDF ou imagens) acrescentados a seguir ao mapa de câmaras. */
+  extraFiles: ExtraFile[];
   /** Secções opcionais a incluir no PDF. */
   pdfSections: PdfSections;
   /** Logótipo do cliente escolhido (id), "none", ou null para escolher pelo cliente lido. */
@@ -63,6 +73,8 @@ export type SessionAction =
   | { type: 'logo-removed' }
   | { type: 'camera-map-set'; image: SessionLogo }
   | { type: 'camera-map-removed' }
+  | { type: 'extra-file-added'; file: ExtraFile }
+  | { type: 'extra-file-removed'; id: string }
   | { type: 'pdf-section-toggled'; key: keyof PdfSections; include: boolean }
   | { type: 'client-logo-chosen'; id: string | null }
   | { type: 'reset' };
@@ -78,7 +90,7 @@ interface StoredSession {
 
 const ALL_SECTIONS: PdfSections = { logistics: true, notes: true, cameraMap: true };
 
-const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, pdfSections: ALL_SECTIONS, clientLogo: null, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
+const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, extraFiles: [], pdfSections: ALL_SECTIONS, clientLogo: null, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
 
 /** Documento vazio segundo o template, para preenchimento manual. */
 export function emptyDocument(): CallSheetDocument {
@@ -122,6 +134,10 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
       return { ...state, cameraMap: action.image };
     case 'camera-map-removed':
       return { ...state, cameraMap: null };
+    case 'extra-file-added':
+      return { ...state, extraFiles: [...state.extraFiles, action.file] };
+    case 'extra-file-removed':
+      return { ...state, extraFiles: state.extraFiles.filter((file) => file.id !== action.id) };
     case 'client-logo-chosen':
       return { ...state, clientLogo: action.id };
     case 'pdf-section-toggled':

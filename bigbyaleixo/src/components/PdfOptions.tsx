@@ -1,7 +1,7 @@
 import type { PdfSections } from '../pdf/pdfGenerator';
 import { useSession } from '../state/session';
 import { ClientLogoPicker } from './ClientLogoPicker';
-import { CameraMapPicker } from './LogoPicker';
+import { CameraMapPicker, ExtraFilesPicker } from './LogoPicker';
 
 const OPTIONS: { key: keyof PdfSections; label: string }[] = [
   { key: 'notes', label: 'Observações' },
@@ -28,6 +28,7 @@ export function PdfOptions() {
       </div>
       <div className="pdf-options__pickers">
         {state.pdfSections.cameraMap && <CameraMapPicker />}
+        {state.pdfSections.cameraMap && <ExtraFilesPicker />}
         <ClientLogoPicker />
       </div>
     </section>
