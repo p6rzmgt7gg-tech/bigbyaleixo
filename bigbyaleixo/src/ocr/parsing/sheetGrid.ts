@@ -241,7 +241,6 @@ export function parseSheetGrid(layout: PageLayout, template: CallSheetTemplate, 
         if (last && Math.abs(last[0].yc - cell.yc) < th * 0.7) last.push(cell);
         else lines.push([cell]);
       }
-      let sequence = 0;
       for (const line of lines) {
         line.forEach((cell) => used.add(cell));
         const at = (cell: LayoutCell): number => (cell.xc - bar.x0) / width;
@@ -251,21 +250,26 @@ export function parseSheetGrid(layout: PageLayout, template: CallSheetTemplate, 
         const transCells = line.filter((cell) => at(cell) >= 0.645 && at(cell) < 0.88).sort((a, b) => a.x0 - b.x0);
         const locCells = line.filter((cell) => at(cell) >= 0.88);
         // Sem marcas soltas (o triângulo de comentário da folha lê-se como "b").
-        const nameText = nameCells.map((cell) => cell.text).join(' ').replace(/(^|\s)[a-z](?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+        const nameText = nameCells.map((cell) => cell.text).join(' ').replace(/(^|\s)[a-zà-ú](?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
         if (!/\p{L}{2}/u.test(nameText)) continue;
-        // Nome a laranja (riscado): já não faz parte da equipa.
-        if (nameCells.every((cell) => isColoredText(image, cell))) continue;
+        // Nome a laranja (riscado na folha): entra na lista, mas fica para confirmar.
+        const struck = nameCells.every((cell) => isColoredText(image, cell));
         const row: SheetRow = { id: createRowId() };
         for (const column of section.columns) row[column.key] = { value: '', confidence: null };
-        row.name = { value: nameText, confidence: Math.min(...nameCells.map((cell) => cell.source.confidence)), bbox: nameCells[0].source.bbox };
-        sequence++;
+        const nameConfidence = Math.min(...nameCells.map((cell) => cell.source.confidence));
+        row.name = { value: nameText.replace(/\s*[«»]+\s*$/, ''), confidence: struck ? Math.min(nameConfidence, INFERRED_CONFIDENCE) : nameConfidence, bbox: nameCells[0].source.bbox };
         if (section.columns.some((column) => column.key === 'number')) {
-          const digits = numberCells.map((cell) => cell.text).join('').replace(/\D/g, '');
-          const read = digits ? Number(digits.slice(0, 2)) : null;
-          row.number =
-            read !== null && read === sequence
-              ? { value: String(read), confidence: numberCells[0].source.confidence, bbox: numberCells[0].source.bbox }
-              : { value: String(sequence), confidence: INFERRED_CONFIDENCE };
+          // O número fica como está escrito ("4", "4rf", "2B"); sem número, fica vazio (não se inventa).
+          let raw = numberCells.map((cell) => cell.text).join('').replace(/[_:.\s]+/g, '');
+          const leading = /^(\d{1,2}[A-Za-z]{0,3})\s+(.+)$/.exec(row.name.value);
+          if (!raw && leading) {
+            raw = leading[1];
+            row.name = { ...row.name, value: leading[2] };
+          }
+          if (raw) {
+            const looksRight = /^\d{1,2}[A-Za-z]{0,3}$/.test(raw);
+            row.number = { value: raw, confidence: looksRight ? numberCells[0]?.source.confidence ?? INFERRED_CONFIDENCE : Math.min(0.6, numberCells[0]?.source.confidence ?? 0.6), bbox: numberCells[0]?.source.bbox };
+          }
         }
         if (statusCells.length && section.columns.some((column) => column.key === 'status')) row.status = cellField(statusCells[0]);
         if (transCells.length && section.columns.some((column) => column.key === 'transPk'))
