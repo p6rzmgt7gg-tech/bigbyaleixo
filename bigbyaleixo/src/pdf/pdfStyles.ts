@@ -15,8 +15,8 @@ export type Rgb = [number, number, number];
 
 const hex = (value: string): Rgb => [parseInt(value.slice(1, 3), 16) / 255, parseInt(value.slice(3, 5), 16) / 255, parseInt(value.slice(5, 7), 16) / 255];
 
-/** Fundos suaves que distinguem as viaturas na logística (alternam por viatura). */
-export const VEHICLE_TINTS = [hex('#e8f1fb'), hex('#eaf6ec'), hex('#fdf5e2'), hex('#f2ecf8'), hex('#e6f5f5'), hex('#fbece4')];
+/** Fundo suave das viaturas na logística: uma sim, outra não (sem tons de vermelho). */
+export const VEHICLE_TINT = hex('#e6eef7');
 
 export const COLOR = {
   /** Títulos dos blocos. */
