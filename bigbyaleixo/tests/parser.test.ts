@@ -183,10 +183,9 @@ describe('formato com cargos, plano de trabalho e logística', () => {
   });
 
   it('lê o plano de trabalho com fase e junta a linha partida', () => {
-    // Primeiro as linhas fixas do template (por preencher), depois a linha lida.
-    expect(document.sections.workPlan.map((r) => r.description?.value)).toEqual(['Início da Montagem', 'Testes', 'Almoço', 'Antevisão com convidados e entrevistas', 'Hora prevista de desmontagem', 'Hora prevista de chegada ao armazém']);
-    expect(document.sections.workPlan[0].time?.value).toBe('');
-    const row = document.sections.workPlan[3];
+    // Só a linha lida (o template já não acrescenta linhas fixas).
+    expect(document.sections.workPlan.map((r) => r.description?.value)).toEqual(['Antevisão com convidados e entrevistas']);
+    const row = document.sections.workPlan[0];
     expect(row.phase?.value).toBe('PRÉ-JOGO');
     expect(row.time?.value).toBe('15:00');
     expect(row.description?.value).toBe('Antevisão com convidados e entrevistas');
@@ -226,7 +225,7 @@ describe('leitura por zonas (secção primeiro)', () => {
       ['ANA EXEMPLO', 'CARRO UM', 'BRUNO TESTE, CARLA MODELO'],
       ['DIOGO TESTE', 'CARRO - DOIS', 'EVA SILVA'],
     ]);
-    expect(document.header.departure.value).toBe('08:30');
+    expect(document.sections.departures[0].time?.value).toBe('08:30');
   });
 
   it('não desloca os nomes das câmaras quando um número não se lê', () => {

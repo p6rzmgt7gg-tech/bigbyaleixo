@@ -41,6 +41,7 @@ export type HeaderKey =
   | 'footer';
 
 export type SectionKey =
+  | 'departures'
   | 'production'
   | 'clientProducer'
   | 'cameras'

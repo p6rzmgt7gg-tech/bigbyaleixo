@@ -9,7 +9,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, PDFEmbeddedPage, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates';
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
-import { withTeamLogistics } from '../utils/logistics';
+import { withDepartures, withTeamLogistics } from '../utils/logistics';
 import { formatDateTime, pdfFileName } from '../utils/formatters';
 import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, type Rgb } from './pdfStyles';
 
@@ -347,24 +347,37 @@ function workPlanBlock(type: Typesetter, section: SectionDef, rows: SheetRow[], 
 /** Logística: saída, origem e a tabela Condutor | Viatura | Passageiros. */
 function logisticsBlock(type: Typesetter, section: SectionDef, document: CallSheetDocument, fields: HeaderFieldDef[], width: number): Block | null {
   const rows = document.sections[section.key] ?? [];
-  const meta = fields.filter((field) => (document.header[field.key]?.value ?? '').trim() !== '');
   // A logística aparece sempre, mesmo sem viaturas (fica a tabela para preencher).
   const lines: Line[] = [heading(section.title)];
+  const timeLabel = fields.find((field) => field.key === 'departure')?.label ?? 'Saída';
+  const placeLabel = fields.find((field) => field.key === 'origin')?.label ?? 'De';
 
-  if (meta.length > 0) {
-    const slot = width / Math.max(2, meta.length);
-    lines.push({
-      height: SPACE.row + 4,
-      draw: (canvas, x, top) => {
-        meta.forEach((field, index) => {
-          const label = `${field.label}:`;
-          const left = x + index * slot;
-          canvas.text(label, left, top, 'bold', SIZE.body, COLOR.ink, SPACE.row);
-          canvas.text(document.header[field.key].value, left + type.width(label, 'bold', SIZE.body) + 4, top, 'bold', SIZE.body, COLOR.navy, SPACE.row);
-        });
+  /** Linha "Saída: 07:30   De: Porto". */
+  const departureLine = (time: string, place: string, gap: number): Line => {
+    const parts = [time !== '' ? { label: `${timeLabel}:`, text: time } : null, place !== '' ? { label: `${placeLabel}:`, text: place } : null].filter(
+      (part): part is { label: string; text: string } => part !== null,
+    );
+    return {
+      height: SPACE.row + gap,
+      keepWithNext: true,
+      draw: (canvas, left, top) => {
+        let cursor = left;
+        const y = top + gap;
+        for (const part of parts) {
+          canvas.text(part.label, cursor, y, 'bold', SIZE.body, COLOR.ink, SPACE.row);
+          cursor += type.width(part.label, 'bold', SIZE.body) + 4;
+          const text = type.wrap(part.text, 'bold', SIZE.body, Math.max(40, left + width - cursor))[0] ?? '';
+          canvas.text(text, cursor, y, 'bold', SIZE.body, COLOR.navy, SPACE.row);
+          cursor += type.width(text, 'bold', SIZE.body) + 14;
+        }
       },
-    });
-  }
+    };
+  };
+
+  // Horas de saída gerais (pode haver várias).
+  const departures = (document.sections.departures ?? []).filter((row) => value(row, 'time') !== '' || value(row, 'location') !== '');
+  departures.forEach((row) => lines.push({ ...departureLine(value(row, 'time'), value(row, 'location'), 0), keepWithNext: false }));
+  if (departures.length > 0) lines.push({ height: 4, draw: () => undefined });
 
   {
     // No PDF: Viatura, Condutor, Passageiros (um por linha). A hora e o local de saída de cada
@@ -379,8 +392,6 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
       x += columnWidth;
       return entry;
     });
-    const timeLabel = section.columns.find((column) => column.key === 'time')?.label ?? 'Saída';
-    const placeLabel = fields.find((field) => field.key === 'origin')?.label ?? 'De';
     const groups: { time: string; place: string; rows: SheetRow[] }[] = [];
     for (const row of rows) {
       const time = value(row, 'time');
@@ -394,27 +405,7 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
     if (groups.length === 0) groups.push({ time: '', place: '', rows: [] });
 
     groups.forEach((group, groupIndex) => {
-      if (withDepartures && (group.time !== '' || group.place !== '')) {
-        const parts = [
-          group.time !== '' ? { label: `${timeLabel}:`, text: group.time } : null,
-          group.place !== '' ? { label: `${placeLabel}:`, text: group.place } : null,
-        ].filter((part): part is { label: string; text: string } => part !== null);
-        lines.push({
-          height: SPACE.row + (groupIndex > 0 ? 6 : 2),
-          keepWithNext: true,
-          draw: (canvas, left, top) => {
-            let cursor = left;
-            const y = top + (groupIndex > 0 ? 4 : 0);
-            for (const part of parts) {
-              canvas.text(part.label, cursor, y, 'bold', SIZE.body, COLOR.ink, SPACE.row);
-              cursor += type.width(part.label, 'bold', SIZE.body) + 4;
-              const text = type.wrap(part.text, 'bold', SIZE.body, Math.max(40, left + width - cursor))[0] ?? '';
-              canvas.text(text, cursor, y, 'bold', SIZE.body, COLOR.navy, SPACE.row);
-              cursor += type.width(text, 'bold', SIZE.body) + 14;
-            }
-          },
-        });
-      }
+      if (withDepartures && (group.time !== '' || group.place !== '')) lines.push(departureLine(group.time, group.place, groupIndex > 0 ? 4 : 0));
       if (groupIndex === 0 || withDepartures) {
         lines.push({
           ...textRow(
@@ -787,7 +778,7 @@ async function embedLogo(pdf: PDFDocument, logo: PdfLogo | null | undefined): Pr
 
 export async function generateCallSheetPdf(source: CallSheetDocument, template: CallSheetTemplate, options: PdfOptions): Promise<GeneratedPdf> {
   // Viaturas, condutores e passageiros deduzidos da equipa quando a logística está vazia.
-  const document = withTeamLogistics(source);
+  const document = withDepartures(withTeamLogistics(source));
   const generatedAt = options.generatedAt ?? new Date();
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);

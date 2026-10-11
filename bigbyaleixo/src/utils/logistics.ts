@@ -58,7 +58,7 @@ const isDriver = (status: string): boolean => /^c+$/i.test(status.trim());
 export function logisticsFromTeam(document: CallSheetDocument): SheetRow[] {
   const groups = new Map<string, { drivers: Field[]; passengers: Field[]; confidence: number }>();
   for (const [key, rows] of Object.entries(document.sections) as [SectionKey, SheetRow[]][]) {
-    if (key === 'drivers' || key === 'workPlan') continue;
+    if (key === 'drivers' || key === 'workPlan' || key === 'departures') continue;
     for (const row of rows) {
       const trans = row.transPk?.value.trim() ?? '';
       const name = row.name?.value.trim() ?? '';
@@ -86,6 +86,21 @@ export function logisticsFromTeam(document: CallSheetDocument): SheetRow[] {
         passengers: { value: group.passengers.map((field) => field.value).join(', '), confidence: group.passengers.length ? confidence : null },
       };
     });
+}
+
+/** A saída única do cabeçalho (Saída / De) passa a ser a primeira das horas de saída. */
+export function withDepartures(document: CallSheetDocument): CallSheetDocument {
+  const time = document.header.departure?.value.trim() ?? '';
+  const place = document.header.origin?.value.trim() ?? '';
+  if (time === '' && place === '') return document;
+  const current = document.sections.departures ?? [];
+  const row: SheetRow = {
+    id: createRowId(),
+    time: time ? document.header.departure : { value: '', confidence: null },
+    location: place ? document.header.origin : { value: '', confidence: null },
+  };
+  const header = { ...document.header, departure: { value: '', confidence: null }, origin: { value: '', confidence: null } };
+  return { ...document, header, sections: { ...document.sections, departures: [row, ...current] } };
 }
 
 /** Põe a logística deduzida no documento, se ainda não houver viaturas. */

@@ -4,12 +4,13 @@
  * deste separador, para sobreviverem a um recarregamento; a imagem original nunca é gravada.
  */
 import type { PdfSections } from '../pdf/pdfGenerator';
-import { withComputedTimes, withFixedRows } from '../templates/fixedRows';
+import { withArrivalSteps, withComputedTimes, withFixedRows } from '../templates/fixedRows';
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react';
 import type { AnalysisResult } from '../ocr/pipeline';
 import { DEFAULT_TEMPLATE, getTemplate } from '../templates';
 import type { CallSheetDocument, ColumnKey, ExtraHeaderField, Field, HeaderKey, SectionKey, SheetRow } from '../types/callSheet';
 import { createRowId, editedField, emptyField } from '../utils/fields';
+import { withDepartures } from '../utils/logistics';
 
 export interface SourceImage {
   file: File;
@@ -180,24 +181,28 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
         header: { ...document.header, others: document.header.others.filter((extra) => extra.id !== action.id) },
       }));
     case 'cell-edited':
-      return editDocument(state, (document) => ({
-        ...document,
-        sections: {
-          ...document.sections,
-          [action.section]: document.sections[action.section].map((row) =>
-            row.id === action.rowId ? { ...row, [action.column]: editedField(action.value, row[action.column]) } : row,
-          ),
-        },
-      }));
+      return editDocument(state, (document) => {
+        const edited = {
+          ...document,
+          sections: {
+            ...document.sections,
+            [action.section]: (document.sections[action.section] ?? []).map((row) =>
+              row.id === action.rowId ? { ...row, [action.column]: editedField(action.value, row[action.column]) } : row,
+            ),
+          },
+        };
+        // Mudar a hora no local acerta a Reunião e o Início de Montagem (se não tiverem sido escritos à mão).
+        return action.section === 'workPlan' ? withArrivalSteps(edited) : edited;
+      });
     case 'row-added':
       return editDocument(state, (document) => ({
         ...document,
-        sections: { ...document.sections, [action.section]: [...document.sections[action.section], emptyRow(action.section)] },
+        sections: { ...document.sections, [action.section]: [...(document.sections[action.section] ?? []), emptyRow(action.section)] },
       }));
     case 'row-removed':
       return editDocument(state, (document) => ({
         ...document,
-        sections: { ...document.sections, [action.section]: document.sections[action.section].filter((row) => row.id !== action.rowId) },
+        sections: { ...document.sections, [action.section]: (document.sections[action.section] ?? []).filter((row) => row.id !== action.rowId) },
       }));
     case 'saved':
       return { ...state, dirty: false, savedAt: action.at };
@@ -244,7 +249,7 @@ function loadStoredDocument(): SessionState {
     if (!raw) return EMPTY;
     const stored = JSON.parse(raw) as StoredSession;
     if (stored.document?.documentType !== 'call_sheet') return EMPTY;
-    return { ...EMPTY, fileName: stored.fileName, document: stored.document, unassigned: stored.unassigned ?? [], savedAt: stored.savedAt };
+    return { ...EMPTY, fileName: stored.fileName, document: withDepartures(stored.document), unassigned: stored.unassigned ?? [], savedAt: stored.savedAt };
   } catch {
     return EMPTY;
   }

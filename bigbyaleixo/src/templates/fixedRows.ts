@@ -59,7 +59,52 @@ export function withFixedRows(document: CallSheetDocument, template: CallSheetTe
     sections = { ...sections, [section.key]: [...atStart, ...rows, ...atEnd] };
   }
   const next = sections === document.sections ? document : { ...document, sections };
-  return withComputedTimes(next, template);
+  return withArrivalSteps(withComputedTimes(next, template));
+}
+
+/** Linha do plano com a hora de chegada ao local. */
+const ARRIVAL_ALIASES = ['hora no local', 'hora de chegada ao local', 'chegada ao local'];
+
+/** Passos depois da chegada ao local: reunião 10 min depois, início de montagem 15 min depois. */
+const ARRIVAL_STEPS = [
+  { description: 'Reunião', aliases: ['reuniao'], minutes: 10 },
+  { description: 'Início de Montagem', aliases: ['inicio de montagem', 'inicio da montagem', 'inicio montagem'], minutes: 15 },
+];
+
+/**
+ * A seguir à "Hora no local" do plano de trabalho entram a Reunião (+10 min) e o Início de
+ * Montagem (+15 min). As horas acompanham a hora no local enquanto não forem escritas à mão.
+ */
+export function withArrivalSteps(document: CallSheetDocument): CallSheetDocument {
+  const rows = document.sections.workPlan ?? [];
+  const arrivalIndex = rows.findIndex((row) => ARRIVAL_ALIASES.includes(plain(row.description?.value ?? '')));
+  if (arrivalIndex < 0) return document;
+  const arrival = parseClock(rows[arrivalIndex].time?.value ?? '');
+  const next = [...rows];
+  let changed = false;
+  let insertAt = arrivalIndex + 1;
+  for (const step of ARRIVAL_STEPS) {
+    const time: Field = arrival === null ? { value: '', confidence: null } : { value: formatClock(arrival + step.minutes), confidence: COMPUTED_TIME_CONFIDENCE };
+    const existing = next.findIndex((row) => step.aliases.includes(plain(row.description?.value ?? '')));
+    if (existing < 0) {
+      next.splice(insertAt, 0, {
+        id: createRowId(),
+        time,
+        description: { value: step.description, confidence: 1 },
+        means: { value: '', confidence: null },
+      });
+      insertAt++;
+      changed = true;
+      continue;
+    }
+    if (existing >= insertAt) insertAt = existing + 1;
+    const current = next[existing].time;
+    const computed = !current || current.value === '' || (!current.edited && current.confidence === COMPUTED_TIME_CONFIDENCE);
+    if (!computed || (current?.value === time.value && current.confidence === time.confidence)) continue;
+    next[existing] = { ...next[existing], time };
+    changed = true;
+  }
+  return changed ? { ...document, sections: { ...document.sections, workPlan: next } } : document;
 }
 
 /**

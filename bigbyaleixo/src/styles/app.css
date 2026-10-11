@@ -1395,3 +1395,17 @@ td.table__confidence {
   white-space: nowrap;
   max-width: 260px;
 }
+
+.departures {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.departures__title {
+  margin: 4px 0 0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

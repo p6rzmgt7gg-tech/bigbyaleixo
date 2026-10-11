@@ -410,19 +410,24 @@ export function parseSheetGrid(layout: PageLayout, template: CallSheetTemplate, 
   // Valores por baixo de rótulos: Crew, Faltam, KO e horas do dia.
   const timeRows: SheetRow[] = [];
   const planSection = sectionOf('workPlan');
-  const labelled: { names: string[]; header?: HeaderKey; plan?: string }[] = [
+  const labelled: { names: string[]; header?: HeaderKey; plan?: string; not?: string[] }[] = [
     { names: ['crew', 'core', 'crev'], header: 'crew' },
     { names: ['faltam'], header: 'missing' },
     { names: ['ko'], header: 'kickoff' },
     { names: ['parking ob'], plan: 'Parking OB' },
-    { names: ['saida ml lx'], plan: 'Saída ML Lx' },
-    { names: ['saida ml pt'], plan: 'Saída ML Pt' },
+    // A Saída ML Pt não entra no plano; não a confundir com a de Lisboa.
+    { names: ['saida ml lx'], plan: 'Saída ML Lx', not: ['saida ml pt'] },
     { names: ['hora no local'], plan: 'Hora no local' },
     { names: ['1 direto', '1o direto'], plan: '1º Direto' },
   ];
   for (const entry of labelled) {
     const label = bestLabel(entry.names);
     if (!label) continue;
+    if (entry.not) {
+      const text = normalizeLabel(label.text);
+      const own = Math.max(...entry.names.map((name) => similarity(text, name)));
+      if (entry.not.some((name) => similarity(text, name) >= own)) continue;
+    }
     const value = below(label);
     if (!value) continue;
     const text = value.text.trim();

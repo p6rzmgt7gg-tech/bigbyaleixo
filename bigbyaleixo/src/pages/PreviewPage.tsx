@@ -2,6 +2,7 @@ import { PdfOptions } from '../components/PdfOptions';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { HeaderEditor } from '../components/HeaderEditor';
+import { EditableTable } from '../components/EditableTable';
 import { HeaderFields } from '../components/HeaderFields';
 import { OriginalViewer } from '../components/OriginalViewer';
 import { SectionEditor } from '../components/SectionEditor';
@@ -76,6 +77,7 @@ export function PreviewPage() {
   const editHeader = useCallback((key: HeaderKey, value: string) => dispatch({ type: 'header-edited', key, value }), [dispatch]);
   const addRow = useCallback((section: SectionKey) => dispatch({ type: 'row-added', section }), [dispatch]);
   const removeRow = useCallback((section: SectionKey, rowId: string) => dispatch({ type: 'row-removed', section, rowId }), [dispatch]);
+  const departuresSection = template.sections.find((section) => section.key === 'departures');
 
   if (!document) return <Navigate to={state.source ? '/process' : '/'} replace />;
 
@@ -140,7 +142,7 @@ export function PreviewPage() {
             onLocate={locate}
           />
 
-          {template.sections.map((section) => {
+          {template.sections.filter((section) => section.key !== 'departures').map((section) => {
             const group = template.groups.find((candidate) => candidate.key === section.group);
             const firstOfGroup = group && template.sections.find((candidate) => candidate.group === group.key) === section;
             return (
@@ -154,8 +156,24 @@ export function PreviewPage() {
                   onRemove={removeRow}
                   onLocate={locate}
                 >
-                  {section.key === 'drivers' && (
-                    <HeaderFields fields={template.headerFields.filter((field) => field.group === 'logistics')} header={document.header} onEdit={editHeader} onLocate={locate} />
+                  {section.key === 'drivers' && departuresSection && (
+                    <div className="departures">
+                      <p className="departures__title">Horas de saída</p>
+                      <EditableTable
+                        title={departuresSection.title}
+                        columns={departuresSection.columns}
+                        rows={document.sections.departures ?? []}
+                        onEdit={(rowId, column, value) => editCell('departures', rowId, column, value)}
+                        onRemove={(rowId) => removeRow('departures', rowId)}
+                        onLocate={locate}
+                      />
+                      <div className="block__foot">
+                        <button type="button" className="button button--small" onClick={() => addRow('departures')}>
+                          Acrescentar hora de saída
+                        </button>
+                      </div>
+                      <p className="departures__title">Viaturas</p>
+                    </div>
                   )}
                 </SectionEditor>
               </div>

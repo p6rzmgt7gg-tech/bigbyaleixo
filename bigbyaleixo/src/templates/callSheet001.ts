@@ -103,22 +103,18 @@ export const callSheet001: CallSheetTemplate = {
         { key: 'description', label: 'Descrição', aliases: ['descricao'], align: 'left', weight: 5 },
         { key: 'means', label: 'Meios / Obs.', aliases: ['meios obs', 'meios', 'obs'], align: 'left', weight: 1.4 },
       ],
-      // Antes do pré-jogo. A hora fica por preencher: só entra a que vier do documento ou do utilizador.
-      fixedRows: [
-        { values: { description: 'Início da Montagem' }, aliases: ['inicio da montagem', 'inicio montagem', 'montagem']},
-        { values: { description: 'Testes' }, aliases: ['testes', 'teste']},
-        { values: { description: 'Almoço' }, aliases: ['almoco']},
-        // No fim do pós-jogo (hora por preencher).
-        {
-          values: { description: 'Hora prevista de desmontagem' },
-          aliases: ['hora prevista de desmontagem', 'desmontagem', 'inicio da desmontagem'],
-          position: 'end',
-        },
-        {
-          values: { description: 'Hora prevista de chegada ao armazém' },
-          aliases: ['hora prevista de chegada ao armazem', 'chegada ao armazem', 'chegada armazem', 'hora prevista de chegada armazem'],
-          position: 'end',
-        },
+      // A Reunião e o Início de Montagem entram a seguir à Hora no local (ver withArrivalSteps).
+    },
+    {
+      // Horas de saída (pode haver várias: parte da equipa sai de outro sítio). Preenche-se à mão
+      // no bloco da logística; não tem rótulos para o leitor procurar.
+      key: 'departures',
+      title: 'HORAS DE SAÍDA',
+      layout: 'table',
+      aliases: [],
+      columns: [
+        { key: 'time', label: 'Hora de saída', aliases: [], align: 'center', weight: 1 },
+        { key: 'location', label: 'Local de saída', aliases: [], align: 'left', weight: 3 },
       ],
     },
     {

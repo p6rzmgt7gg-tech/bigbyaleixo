@@ -6,6 +6,7 @@ import btv from './clients/btv.png?url';
 import canal11 from './clients/canal11.png?url';
 import portocanal from './clients/portocanal.png?url';
 import sporttv from './clients/sporttv.png?url';
+import tvi from './clients/tvi.png?url';
 import type { PdfLogo } from './pdfGenerator';
 
 export interface ClientLogo {
@@ -23,6 +24,7 @@ export const BUILT_IN_LOGOS: ClientLogo[] = [
   { id: 'portocanal', name: 'PORTO CANAL', url: portocanal, matches: ['porto canal', 'portocanal'] },
   { id: 'canal11', name: 'CANAL 11', url: canal11, matches: ['canal 11', 'canal11', '11'] },
   { id: 'btv', name: 'BTV', url: btv, matches: ['btv', 'benfica tv'] },
+  { id: 'tvi', name: 'TVI', url: tvi, matches: ['tvi', 'tvi24'] },
 ];
 
 const STORAGE_KEY = 'big:client-logos';
