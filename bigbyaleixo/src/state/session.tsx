@@ -34,6 +34,8 @@ export interface SessionState {
   cameraMap: SessionLogo | null;
   /** Secções opcionais a incluir no PDF. */
   pdfSections: PdfSections;
+  /** Logótipo do cliente escolhido (id), "none", ou null para escolher pelo cliente lido. */
+  clientLogo: string | null;
   /** Nome do ficheiro de origem (mantém-se depois de recarregar a página). */
   fileName: string | null;
   document: CallSheetDocument | null;
@@ -62,6 +64,7 @@ export type SessionAction =
   | { type: 'camera-map-set'; image: SessionLogo }
   | { type: 'camera-map-removed' }
   | { type: 'pdf-section-toggled'; key: keyof PdfSections; include: boolean }
+  | { type: 'client-logo-chosen'; id: string | null }
   | { type: 'reset' };
 
 const STORAGE_KEY = 'big-by-aleixo:session';
@@ -75,7 +78,7 @@ interface StoredSession {
 
 const ALL_SECTIONS: PdfSections = { logistics: true, notes: true, cameraMap: true };
 
-const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, pdfSections: ALL_SECTIONS, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
+const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, pdfSections: ALL_SECTIONS, clientLogo: null, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
 
 /** Documento vazio segundo o template, para preenchimento manual. */
 export function emptyDocument(): CallSheetDocument {
@@ -119,6 +122,8 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
       return { ...state, cameraMap: action.image };
     case 'camera-map-removed':
       return { ...state, cameraMap: null };
+    case 'client-logo-chosen':
+      return { ...state, clientLogo: action.id };
     case 'pdf-section-toggled':
       return { ...state, pdfSections: { ...state.pdfSections, [action.key]: action.include } };
     case 'analysis-finished':

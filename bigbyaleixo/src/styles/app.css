@@ -1301,3 +1301,76 @@ td.table__confidence {
     max-height: 75vh;
   }
 }
+
+/* Logótipos dos clientes */
+.client-logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.client-logo {
+  position: relative;
+}
+
+.client-logo__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 112px;
+  height: 76px;
+  padding: 6px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  font: inherit;
+}
+
+.client-logo--active .client-logo__choice {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
+}
+
+.client-logo__choice img {
+  max-width: 96px;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.client-logo__name,
+.client-logo__text {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.client-logo__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.client-logos__add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.client-logos__add input[type='text'] {
+  min-width: 160px;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  font: inherit;
+}

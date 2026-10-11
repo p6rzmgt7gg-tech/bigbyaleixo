@@ -39,6 +39,8 @@ export interface PdfOptions {
   fonts: PdfFonts;
   /** Logótipo para o canto superior esquerdo. Sem logótipo, aparece a marca BIG. */
   logo?: PdfLogo | null;
+  /** Logótipo do cliente (canto superior direito, por cima da data). */
+  clientLogo?: PdfLogo | null;
   /** Mapa de câmaras (imagem), entre a logística e as observações. */
   cameraMap?: PdfLogo | null;
   /** Momento da geração (rodapé e, na falta de data, nome do ficheiro). */
@@ -566,7 +568,7 @@ class Composer {
 // Cabeçalho
 // ---------------------------------------------------------------------------
 
-function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDFImage | null): void {
+function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDFImage | null, clientLogo: PDFImage | null): void {
   const { canvas } = composer;
   const type = canvas.type;
   const get = (key: HeaderKey): string => (document.header[key]?.value ?? '').trim();
@@ -583,17 +585,20 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
     canvas.text('BIG', PAGE.marginX, top + 12, 'bold', 38, COLOR.ink, 38);
   }
 
-  // PF e dia, à direita de um filete vertical.
+  // Logótipo do cliente e data, à direita de um filete vertical.
   const ruleX = PAGE.width - PAGE.marginX - SPACE.pfWidth;
-  const pf = get('pf');
-  // A data aparece só aqui, no canto superior direito (o dia, ou a data quando não há dia).
   const day = get('date');
-  if (pf !== '' || day !== '') {
+  if (clientLogo || day !== '') {
     canvas.line(ruleX, top + 6, ruleX, top + height - 4, 1.2, COLOR.ink);
     const center = ruleX + (PAGE.width - PAGE.marginX - ruleX) / 2 + 4;
-    const pfText = pf === '' ? '' : /^\d/.test(pf) ? `PF ${pf}` : pf;
-    const pfSize = type.fit(pfText, 'bold', SIZE.pf, SPACE.pfWidth - 12, 16);
-    canvas.centered(pfText, center, top + 6, 'bold', pfSize, COLOR.ink, SIZE.pf);
+    if (clientLogo) {
+      const boxWidth = SPACE.pfWidth - 16;
+      const boxHeight = SIZE.pf + 2;
+      const scale = Math.min(boxWidth / clientLogo.width, boxHeight / clientLogo.height);
+      const width = clientLogo.width * scale;
+      const logoHeight = clientLogo.height * scale;
+      canvas.image(clientLogo, center - width / 2, top + 4 + (boxHeight - logoHeight) / 2, width, logoHeight);
+    }
     canvas.centered(day, center, top + 6 + SIZE.pf + 2, 'semibold', type.fit(day, 'semibold', SIZE.day, SPACE.pfWidth - 8, 9), COLOR.ink, SIZE.day * 1.1);
   }
 
@@ -715,6 +720,7 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
     bold: await embed(options.fonts.bold),
   });
   const logo = await embedLogo(pdf, options.logo);
+  const clientLogo = await embedLogo(pdf, options.clientLogo);
   const include: PdfSections = { logistics: true, notes: true, cameraMap: true, ...options.include };
   const cameraMap = include.cameraMap ? await embedLogo(pdf, options.cameraMap) : null;
 
@@ -731,7 +737,7 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
 
   const runningTitle = [get('pf') && (/^\d/.test(get('pf')) ? `PF ${get('pf')}` : get('pf')), get('event') || get('competition'), get('date')].filter(Boolean).join('   ·   ');
   const composer = new Composer(pdf, type, runningTitle);
-  drawMasthead(composer, document, logo);
+  drawMasthead(composer, document, logo, clientLogo);
   drawInfoLines(composer, document, template.headerFields);
 
   const half = (CONTENT_WIDTH - SPACE.columnGap) / 2;

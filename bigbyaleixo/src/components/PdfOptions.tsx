@@ -1,13 +1,14 @@
 import type { PdfSections } from '../pdf/pdfGenerator';
 import { useSession } from '../state/session';
-import { CameraMapPicker, LogoPicker } from './LogoPicker';
+import { ClientLogoPicker } from './ClientLogoPicker';
+import { CameraMapPicker } from './LogoPicker';
 
 const OPTIONS: { key: keyof PdfSections; label: string }[] = [
   { key: 'notes', label: 'Observações' },
   { key: 'cameraMap', label: 'Mapa de Câmaras' },
 ];
 
-/** Opções antes de gerar o PDF: secções a incluir, mapa de câmaras e logótipo. */
+/** Opções antes de gerar o PDF: secções a incluir, mapa de câmaras e logótipo do cliente (o da Medialuso é fixo). */
 export function PdfOptions() {
   const { state, dispatch } = useSession();
   return (
@@ -27,7 +28,7 @@ export function PdfOptions() {
       </div>
       <div className="pdf-options__pickers">
         {state.pdfSections.cameraMap && <CameraMapPicker />}
-        <LogoPicker />
+        <ClientLogoPicker />
       </div>
     </section>
   );

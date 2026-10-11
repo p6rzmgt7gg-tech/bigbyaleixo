@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router';
 import { PdfPreview } from '../components/PdfPreview';
+import { listClientLogos, loadClientLogo, logoForClient } from '../pdf/clientLogos';
 import { loadDefaultLogo } from '../pdf/defaultLogo';
 import { loadPdfFonts } from '../pdf/fonts';
 import { generateCallSheetPdf } from '../pdf/pdfGenerator';
@@ -19,7 +20,7 @@ export function PdfPage() {
   const [failed, setFailed] = useState(false);
   const [shown, setShown] = useState(false);
   const [round, setRound] = useState(0);
-  const { document, logo, cameraMap, pdfSections } = state;
+  const { document, cameraMap, pdfSections, clientLogo } = state;
 
   useEffect(() => {
     if (!document) return;
@@ -29,9 +30,17 @@ export function PdfPage() {
     setShown(false);
     setPdf(null);
     loadPdfFonts()
-      .then(async (fonts) =>
-        generateCallSheetPdf(document, getTemplate(document.template), { fonts, logo: logo ?? (await loadDefaultLogo()), cameraMap, include: pdfSections }),
-      )
+      .then(async (fonts) => {
+        // Medialuso sempre; o do cliente pela escolha feita, ou pelo cliente lido no cabeçalho.
+        const chosen = clientLogo === 'none' ? null : clientLogo ? listClientLogos().find((logo) => logo.id === clientLogo) ?? null : logoForClient(document.header.client?.value ?? '');
+        return generateCallSheetPdf(document, getTemplate(document.template), {
+          fonts,
+          logo: await loadDefaultLogo(),
+          clientLogo: chosen ? await loadClientLogo(chosen) : null,
+          cameraMap,
+          include: pdfSections,
+        });
+      })
       .then((generated) => {
         if (cancelled) return;
         // O ficheiro descarregado é exatamente o que está na pré-visualização.
@@ -46,7 +55,7 @@ export function PdfPage() {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [document, logo, cameraMap, pdfSections, round]);
+  }, [document, cameraMap, pdfSections, clientLogo, round]);
 
   const rendered = useCallback((ok: boolean) => {
     setShown(ok);
