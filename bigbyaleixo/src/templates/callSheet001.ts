@@ -56,7 +56,6 @@ export const callSheet001: CallSheetTemplate = {
       kind: 'count',
       group: 'info',
     },
-    { key: 'missing', label: 'Faltam', aliases: ['faltam', 'falta', 'em falta'], kind: 'count', group: 'info' },
     { key: 'departure', label: 'Saída', aliases: ['saida', 'hora de saida', 'partida'], kind: 'time', group: 'logistics' },
     { key: 'origin', label: 'De', aliases: ['de', 'origem', 'partida de'], kind: 'place', group: 'logistics' },
     { key: 'notes', label: 'Observações', aliases: ['observacoes', 'observacao', 'obs', 'notas'], kind: 'note', group: 'notes' },

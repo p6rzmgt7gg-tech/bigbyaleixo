@@ -26,7 +26,7 @@ function cell(text: string, x: number, y: number, confidence = 0.96): TextCell {
 
 /** Folha sem grelha: rótulos à esquerda, cabeçalho com "Rótulo valor". */
 function sheet(): TextCell[] {
-  const cells: TextCell[] = [cell('Local: Porto, Pavilhão Rosa Mota', 20, 10), cell('Data: quarta 7 out', 20, 30), cell('PF 26.1042', 20, 50), cell('Faltam 2', 160, 50)];
+  const cells: TextCell[] = [cell('Local: Porto, Pavilhão Rosa Mota', 20, 10), cell('Data: quarta 7 out', 20, 30), cell('PF 26.1042', 20, 50)];
   let y = 100;
   cells.push(cell('Câmaras', 20, y));
   y += 22;
@@ -52,7 +52,6 @@ describe('parser do template 001', () => {
     expect(header.location.value).toBe('Porto, Pavilhão Rosa Mota');
     expect(header.date.value).toBe('quarta 7 out');
     expect(header.pf.value).toBe('26.1042');
-    expect(header.missing.value).toBe('2');
   });
 
   it('separa cada linha em colunas, sem juntar tudo num campo', () => {

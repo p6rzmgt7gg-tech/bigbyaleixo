@@ -31,7 +31,8 @@ export function CameraMapPicker() {
     <ImagePicker
       label="Mapa de câmaras"
       current={state.cameraMap}
-      empty={<p className="pdf__hint">Sem mapa. Escolha a imagem do mapa de câmaras deste jogo (PNG ou JPG).</p>}
+      empty={<p className="pdf__hint">Sem mapa. Escolha o mapa de câmaras deste jogo (PDF, PNG ou JPG); vai para a página seguinte do PDF.</p>}
+      acceptPdf
       chooseText="Escolher mapa"
       replaceText="Trocar mapa"
       removeText="Remover"

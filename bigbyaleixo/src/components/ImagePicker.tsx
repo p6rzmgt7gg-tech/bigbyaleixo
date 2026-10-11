@@ -1,7 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { SessionLogo } from '../state/session';
+import { isPdf, pdfFirstPageToPng } from '../utils/pdfToImage';
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
 interface ImagePickerProps {
   label: string;
@@ -12,24 +13,35 @@ interface ImagePickerProps {
   replaceText: string;
   removeText: string;
   alt: string;
+  /** Aceita também PDF (usa-se a primeira página). */
+  acceptPdf?: boolean;
   onChange: (image: SessionLogo | null) => void;
 }
 
 /** Escolha de uma imagem (PNG ou JPG) para o PDF. Fica só no browser. */
-export function ImagePicker({ label, current, empty, chooseText, replaceText, removeText, alt, onChange }: ImagePickerProps) {
+export function ImagePicker({ label, current, empty, chooseText, replaceText, removeText, alt, onChange, acceptPdf }: ImagePickerProps) {
   const input = useRef<HTMLInputElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const choose = async (file: File): Promise<void> => {
+  const choose = async (picked: File): Promise<void> => {
     setProblem(null);
+    let file = picked;
+    if (acceptPdf && isPdf(picked)) {
+      try {
+        file = await pdfFirstPageToPng(picked, { trim: true });
+      } catch {
+        setProblem('Não foi possível abrir este PDF.');
+        return;
+      }
+    }
     const name = file.name.toLowerCase();
     const type = file.type === 'image/png' || name.endsWith('.png') ? 'png' : file.type === 'image/jpeg' || /\.jpe?g$/.test(name) ? 'jpg' : null;
     if (!type) {
-      setProblem('A imagem tem de ser PNG ou JPG.');
+      setProblem(acceptPdf ? 'O ficheiro tem de ser PNG, JPG ou PDF.' : 'A imagem tem de ser PNG ou JPG.');
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setProblem('A imagem tem de ter menos de 5 MB.');
+      setProblem('A imagem tem de ter menos de 15 MB.');
       return;
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -55,7 +67,7 @@ export function ImagePicker({ label, current, empty, chooseText, replaceText, re
       <input
         ref={input}
         type="file"
-        accept=".png,.jpg,.jpeg"
+        accept={acceptPdf ? '.png,.jpg,.jpeg,.pdf' : '.png,.jpg,.jpeg'}
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];

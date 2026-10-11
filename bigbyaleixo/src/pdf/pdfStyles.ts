@@ -68,7 +68,7 @@ export const SPACE = {
   /** Entrelinha do texto que parte em várias linhas. */
   lineHeight: 1.18,
   /** Altura mínima da caixa de observações. */
-  notesMinHeight: 48,
+  notesMinHeight: 30,
   /** Altura máxima do mapa de câmaras. */
   cameraMapMaxHeight: 125,
   /** Abaixo disto o mapa deixa de se ler: passa para a página seguinte. */

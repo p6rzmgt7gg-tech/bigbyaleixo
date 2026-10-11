@@ -398,25 +398,6 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
   return { title: section.title, lines };
 }
 
-/** "Rótulo: valor" numa linha (o valor parte se for comprido), sem título de bloco. */
-function labelLineBlock(type: Typesetter, label: string, text: string, width: number): Block {
-  const labelText = `${label}:`;
-  const labelWidth = type.width(labelText, 'bold', SIZE.body) + 4;
-  const lines = type.wrap(text, 'bold', SIZE.body, width - labelWidth);
-  const step = SIZE.body * SPACE.lineHeight;
-  return {
-    title: label,
-    lines: [
-      {
-        height: SPACE.row + (lines.length - 1) * step,
-        draw: (canvas, x, top) => {
-          canvas.text(labelText, x, top, 'bold', SIZE.body, COLOR.ink, SPACE.row);
-          lines.forEach((line, index) => canvas.text(line, x + labelWidth, top + index * step, 'bold', SIZE.body, COLOR.navy, SPACE.row));
-        },
-      },
-    ],
-  };
-}
 
 /** Mapa de câmaras: a imagem à largura da coluna, sem passar a altura máxima. */
 function imageBlock(type: Typesetter, title: string, image: PDFImage, width: number, maxHeight: number, caption?: { label: string; text: string }): Block {
@@ -500,6 +481,12 @@ class Composer {
       this.canvas.text(this.runningTitle, PAGE.marginX, PAGE.marginTop, 'semibold', SIZE.footer, COLOR.muted, 14);
       this.canvas.line(PAGE.marginX, PAGE.marginTop + 17, PAGE.width - PAGE.marginX, PAGE.marginTop + 17, 0.6, COLOR.rule);
     }
+  }
+
+  /** Passa para uma página nova, no topo. */
+  newPage(): void {
+    this.usePage(this.pages.length);
+    this.y = this.nextPageTop();
   }
 
   /** Vai para a página `index`, criando-a se for preciso. */
@@ -632,7 +619,7 @@ function drawInfoLines(composer: Composer, document: CallSheetDocument, fields: 
   const groups: { label: string; text: string }[][] = [
     // A data está no canto superior direito e o local por baixo do mapa de câmaras.
     [item('means'), item('kickoff'), item('setup')],
-    [item('crew'), item('missing')],
+    [item('crew'), item('location')],
     // Outros campos encontrados no cabeçalho do documento original.
     document.header.others.map((extra) => ({ label: extra.label.trim(), text: extra.field.value.trim() })),
   ];
@@ -760,36 +747,22 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
   const locationField = template.headerFields.find((field) => field.key === 'location');
   const location = { label: locationField?.label ?? 'Local', text: get('location') };
 
-  // Mapa de câmaras debaixo da equipa (coluna da esquerda), com o local por cima.
-  // Ocupa o espaço que sobra nesta página; se não couber legível, passa para a página seguinte, a toda a largura.
-  let mapBlock: Block | null = null;
-  let mapBelow = false;
-  if (cameraMap) {
-    const captionHeight = location.text !== '' ? SPACE.row + 2 : 0;
-    const room = available - columnHeight(staff) - SPACE.blockGap - heading('').height - captionHeight - 6;
-    if (room >= SPACE.cameraMapMinHeight) mapBlock = imageBlock(type, 'MAPA DE CÂMARAS', cameraMap, half, Math.min(SPACE.cameraMapMaxHeight, room), location);
-    else mapBelow = true;
-  }
-  const left = mapBlock ? [...staff, mapBlock] : staff;
+  const left = staff;
 
-  // Coluna da direita: plano de trabalho, logística (e o local, quando não acompanha o mapa) e observações.
+  // Coluna da direita: plano de trabalho, logística e observações (estas ocupam o que sobra da página).
   const tables = template.sections.filter((section) => section.layout === 'table');
   const plan = tables.find((section) => section.key === 'workPlan');
   const transport = tables.find((section) => section.key === 'drivers');
   const planBlock = plan && rowsOf(plan).length > 0 ? workPlanBlock(type, plan, rowsOf(plan), half) : null;
   const logistics = transport ? logisticsBlock(type, transport, document, template.headerFields.filter((field) => field.group === 'logistics'), half) : null;
-  const locationBlock = !cameraMap && location.text !== '' ? labelLineBlock(type, location.label, location.text, half) : null;
-  const above = [planBlock, logistics, locationBlock].filter((block): block is Block => block !== null);
+  const above = [planBlock, logistics].filter((block): block is Block => block !== null);
   const notesField = template.headerFields.find((field) => field.key === 'notes');
   const notesTitle = (notesField?.label ?? 'Observações').toUpperCase();
   const notesHeading = notesBlock(type, notesTitle, get('notes'), half, 0).lines[0].height;
-
-  const target = Math.min(columnHeight(left), available);
   const aboveHeight = columnHeight(above) + (above.length > 0 ? SPACE.blockGap : 0);
-  // Metade do espaço que sobra até ao fundo da coluna da esquerda.
-  const notesMin = Math.max(SPACE.notesMinHeight, (target - aboveHeight - notesHeading) / 2);
-  const fitsBeside = aboveHeight + notesHeading + notesMin <= available;
-  const notes = notesBlock(type, notesTitle, get('notes'), half, fitsBeside ? notesMin : SPACE.notesMinHeight);
+  // Observações ajustadas ao espaço que fica no fundo da primeira página.
+  const notesHeight = Math.max(SPACE.notesMinHeight, available - aboveHeight - notesHeading - 4);
+  const notes = notesBlock(type, notesTitle, get('notes'), half, notesHeight);
 
   composer.placeBand({
     flow: true,
@@ -798,8 +771,12 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
       { width: half, blocks: include.notes ? [...above, notes] : above },
     ],
   });
-  if (mapBelow && cameraMap) {
-    composer.placeBand({ columns: [{ width: CONTENT_WIDTH, blocks: [imageBlock(type, 'MAPA DE CÂMARAS', cameraMap, CONTENT_WIDTH, SPACE.cameraMapMaxHeight * 2, location)] }] });
+
+  // Mapa de câmaras na página seguinte, a toda a largura.
+  if (cameraMap) {
+    composer.newPage();
+    const room = composer.bottom - composer.y - heading('').height - (location.text !== '' ? SPACE.row + 2 : 0) - 8;
+    composer.placeBand({ columns: [{ width: CONTENT_WIDTH, blocks: [imageBlock(type, 'MAPA DE CÂMARAS', cameraMap, CONTENT_WIDTH, room, location)] }] });
   }
 
   drawFooters(composer, document, generatedAt);
