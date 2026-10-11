@@ -9,6 +9,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates';
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
+import { withTeamLogistics } from '../utils/logistics';
 import { formatDateTime, pdfFileName } from '../utils/formatters';
 import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, type Rgb } from './pdfStyles';
 
@@ -337,9 +338,9 @@ function workPlanBlock(type: Typesetter, section: SectionDef, rows: SheetRow[], 
 
 /** Logística: saída, origem e a tabela Condutor | Viatura | Passageiros. */
 function logisticsBlock(type: Typesetter, section: SectionDef, document: CallSheetDocument, fields: HeaderFieldDef[], width: number): Block | null {
-  const rows = document.sections[section.key];
-  const meta = fields.filter((field) => document.header[field.key].value.trim() !== '');
-  if (rows.length === 0 && meta.length === 0) return null;
+  const rows = document.sections[section.key] ?? [];
+  const meta = fields.filter((field) => (document.header[field.key]?.value ?? '').trim() !== '');
+  // A logística aparece sempre, mesmo sem viaturas (fica a tabela para preencher).
   const lines: Line[] = [heading(section.title)];
 
   if (meta.length > 0) {
@@ -357,7 +358,7 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
     });
   }
 
-  if (rows.length > 0) {
+  {
     // No PDF: Viatura, Condutor, Passageiros (um por linha).
     const order: ColumnKey[] = ['vehicle', 'name', 'passengers'];
     const columns = [...section.columns].sort((a, b) => (order.indexOf(a.key) + 99) % 99 - ((order.indexOf(b.key) + 99) % 99));
@@ -568,7 +569,7 @@ class Composer {
 function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDFImage | null): void {
   const { canvas } = composer;
   const type = canvas.type;
-  const get = (key: HeaderKey): string => document.header[key].value.trim();
+  const get = (key: HeaderKey): string => (document.header[key]?.value ?? '').trim();
   const top = PAGE.marginTop;
   const height = SPACE.mastheadHeight;
 
@@ -586,7 +587,7 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
   const ruleX = PAGE.width - PAGE.marginX - SPACE.pfWidth;
   const pf = get('pf');
   // A data aparece só aqui, no canto superior direito (o dia, ou a data quando não há dia).
-  const day = get('day') || get('date');
+  const day = get('date');
   if (pf !== '' || day !== '') {
     canvas.line(ruleX, top + 6, ruleX, top + height - 4, 1.2, COLOR.ink);
     const center = ruleX + (PAGE.width - PAGE.marginX - ruleX) / 2 + 4;
@@ -622,11 +623,11 @@ function drawMasthead(composer: Composer, document: CallSheetDocument, logo: PDF
 function drawInfoLines(composer: Composer, document: CallSheetDocument, fields: HeaderFieldDef[]): void {
   const { canvas } = composer;
   const type = canvas.type;
-  const item = (key: HeaderKey) => ({ label: fields.find((field) => field.key === key)?.label ?? '', text: document.header[key].value.trim() });
+  const item = (key: HeaderKey) => ({ label: fields.find((field) => field.key === key)?.label ?? '', text: fields.some((field) => field.key === key) ? (document.header[key]?.value ?? '').trim() : '' });
   const groups: { label: string; text: string }[][] = [
     // A data está no canto superior direito e o local por baixo do mapa de câmaras.
     [item('means'), item('kickoff'), item('setup')],
-    [item('id'), item('crew'), item('missing'), item('lx'), item('pt')],
+    [item('crew'), item('missing')],
     // Outros campos encontrados no cabeçalho do documento original.
     document.header.others.map((extra) => ({ label: extra.label.trim(), text: extra.field.value.trim() })),
   ];
@@ -700,7 +701,9 @@ async function embedLogo(pdf: PDFDocument, logo: PdfLogo | null | undefined): Pr
   }
 }
 
-export async function generateCallSheetPdf(document: CallSheetDocument, template: CallSheetTemplate, options: PdfOptions): Promise<GeneratedPdf> {
+export async function generateCallSheetPdf(source: CallSheetDocument, template: CallSheetTemplate, options: PdfOptions): Promise<GeneratedPdf> {
+  // Viaturas, condutores e passageiros deduzidos da equipa quando a logística está vazia.
+  const document = withTeamLogistics(source);
   const generatedAt = options.generatedAt ?? new Date();
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -715,7 +718,7 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
   const include: PdfSections = { logistics: true, notes: true, cameraMap: true, ...options.include };
   const cameraMap = include.cameraMap ? await embedLogo(pdf, options.cameraMap) : null;
 
-  const get = (key: HeaderKey): string => document.header[key].value.trim();
+  const get = (key: HeaderKey): string => (document.header[key]?.value ?? '').trim();
   const title = [get('competition'), get('event')].filter(Boolean).join(' - ') || 'CALL SHEET';
   pdf.setTitle([title, get('date')].filter(Boolean).join(' - '));
   pdf.setAuthor(BRAND);
@@ -768,7 +771,7 @@ export async function generateCallSheetPdf(document: CallSheetDocument, template
   const plan = tables.find((section) => section.key === 'workPlan');
   const transport = tables.find((section) => section.key === 'drivers');
   const planBlock = plan && rowsOf(plan).length > 0 ? workPlanBlock(type, plan, rowsOf(plan), half) : null;
-  const logistics = transport && include.logistics ? logisticsBlock(type, transport, document, template.headerFields.filter((field) => field.group === 'logistics'), half) : null;
+  const logistics = transport ? logisticsBlock(type, transport, document, template.headerFields.filter((field) => field.group === 'logistics'), half) : null;
   const locationBlock = !cameraMap && location.text !== '' ? labelLineBlock(type, location.label, location.text, half) : null;
   const above = [planBlock, logistics, locationBlock].filter((block): block is Block => block !== null);
   const notesField = template.headerFields.find((field) => field.key === 'notes');

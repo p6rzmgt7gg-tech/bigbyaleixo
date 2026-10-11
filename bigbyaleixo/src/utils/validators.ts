@@ -1,7 +1,7 @@
 /** Limite de tamanho do ficheiro carregado. */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
-export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
-export const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.heif'];
+export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'application/pdf'];
+export const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.pdf'];
 
 /** Fotografias de iPhone. Só alguns browsers (Safari) as conseguem abrir. */
 export function isHeic(file: { name: string; type: string }): boolean {

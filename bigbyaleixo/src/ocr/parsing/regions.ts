@@ -139,8 +139,11 @@ export function parseByRegions(layout: PageLayout, template: CallSheetTemplate):
   for (const zone of zones) {
     const zoneLines = lines(zone.cells, th);
     let keep = zoneLines.length;
+    // Distância normal entre linhas da zona; um salto muito maior separa o que já não lhe pertence.
+    const pitches = zoneLines.slice(1).map((line, i) => line[0].yc - zoneLines[i][0].yc).sort((a, b) => a - b);
+    const pitch = pitches.length ? pitches[Math.floor(pitches.length / 2)] : th * 2;
     for (let i = 1; i < zoneLines.length; i++) {
-      if (zoneLines[i][0].y0 - zoneLines[i - 1][0].y1 > th * 5.5) {
+      if (zoneLines[i][0].yc - zoneLines[i - 1][0].yc > Math.max(pitch * 2.6, th * 3)) {
         keep = i;
         break;
       }

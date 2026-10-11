@@ -248,7 +248,7 @@ export function parseSheetGrid(layout: PageLayout, template: CallSheetTemplate, 
         const nameCells = line.filter((cell) => at(cell) >= 0.1 && at(cell) < 0.54);
         const numberCells = line.filter((cell) => at(cell) < 0.1);
         const statusCells = line.filter((cell) => at(cell) >= 0.54 && at(cell) < 0.645);
-        const transCells = line.filter((cell) => at(cell) >= 0.645 && at(cell) < 0.88);
+        const transCells = line.filter((cell) => at(cell) >= 0.645 && at(cell) < 0.88).sort((a, b) => a.x0 - b.x0);
         const locCells = line.filter((cell) => at(cell) >= 0.88);
         // Sem marcas soltas (o triângulo de comentário da folha lê-se como "b").
         const nameText = nameCells.map((cell) => cell.text).join(' ').replace(/(^|\s)[a-z](?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();

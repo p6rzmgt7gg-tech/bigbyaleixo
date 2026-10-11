@@ -4,7 +4,7 @@ import type { PipelineErrorCode, PipelineStage } from '../ocr/pipeline';
 export const ERROR_MESSAGES: Record<PipelineErrorCode, { title: string; hint: string }> = {
   unsupported_format: {
     title: 'Formato não suportado.',
-    hint: 'Carregue uma imagem JPG, JPEG, PNG ou HEIC.',
+    hint: 'Carregue uma imagem JPG, JPEG, PNG ou HEIC, ou um PDF.',
   },
   heic_unsupported: {
     title: 'Este browser não abre fotografias HEIC.',

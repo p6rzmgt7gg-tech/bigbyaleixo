@@ -3,7 +3,6 @@ import { useSession } from '../state/session';
 import { CameraMapPicker, LogoPicker } from './LogoPicker';
 
 const OPTIONS: { key: keyof PdfSections; label: string }[] = [
-  { key: 'logistics', label: 'Logística / Transportes' },
   { key: 'notes', label: 'Observações' },
   { key: 'cameraMap', label: 'Mapa de Câmaras' },
 ];

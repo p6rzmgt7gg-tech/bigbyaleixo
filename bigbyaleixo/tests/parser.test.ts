@@ -66,7 +66,6 @@ describe('parser do template 001', () => {
   });
 
   it('não inventa valores: campos ausentes ficam vazios', () => {
-    expect(header.id.value).toBe('');
     expect(header.crew.value).toBe('');
     expect(sections.cameras[2].status?.value).toBe('');
     expect(sections.ccu).toEqual([]);
@@ -97,10 +96,11 @@ describe('confiança', () => {
 });
 
 describe('ficheiros', () => {
-  it('aceita só JPG/JPEG/PNG até 20 MB', () => {
+  it('aceita JPG/JPEG/PNG/PDF até 20 MB', () => {
     expect(checkImageFile({ name: 'a.jpg', type: 'image/jpeg', size: 1000 })).toBeNull();
     expect(checkImageFile({ name: 'a.PNG', type: 'image/png', size: 1000 })).toBeNull();
-    expect(checkImageFile({ name: 'a.pdf', type: 'application/pdf', size: 1000 })).toBe('unsupported_format');
+    expect(checkImageFile({ name: 'a.pdf', type: 'application/pdf', size: 1000 })).toBeNull();
+    expect(checkImageFile({ name: 'a.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 1000 })).toBe('unsupported_format');
     expect(checkImageFile({ name: 'a.jpg', type: 'image/jpeg', size: 21 * 1024 * 1024 })).toBe('file_too_large');
   });
 });
@@ -268,6 +268,33 @@ describe('folha em grelha (barras dos títulos)', () => {
       [400, 20],
       [200, 100],
       [400, 100],
+    ]);
+  });
+});
+
+describe('logística a partir da equipa', () => {
+  it('agrupa por viatura: "C" é o condutor, os outros são passageiros; P-Aux é a carrinha do Porto', async () => {
+    const { logisticsFromTeam } = await import('../src/utils/logistics');
+    const f = (value: string) => ({ value, confidence: 0.95 });
+    const document = {
+      documentType: 'call_sheet' as const,
+      template: 'CALL_SHEET_001',
+      header: {} as never,
+      sections: {
+        cameras: [
+          { id: '1', number: f('1'), name: f('Ana'), status: f('ok'), transPk: f('P-VIt'), location: f('Pt') },
+          { id: '2', number: f('2'), name: f('Bruno'), status: f('ok'), transPk: f('P-R1'), location: f('Pt') },
+          { id: '3', number: f('3'), name: f('Carla'), status: f('Cc'), transPk: f('P-Aux Brasel'), location: f('Pt') },
+        ],
+        production: [{ id: '4', name: f('Dinis'), status: f('C'), transPk: f('P-R1'), location: f('Pt') }],
+        realization: [{ id: '5', name: f('Eva'), status: f('C'), transPk: f('P-Vlt'), location: f('Pt') }],
+      } as never,
+    };
+    const rows = logisticsFromTeam(document).map((row) => [row.vehicle?.value, row.name?.value, row.passengers?.value]);
+    expect(rows).toEqual([
+      ['P-Aux (carrinha material Porto)', 'Carla', ''],
+      ['P-R1', 'Dinis', 'Bruno'],
+      ['P-Vlt', 'Eva', 'Ana'],
     ]);
   });
 });

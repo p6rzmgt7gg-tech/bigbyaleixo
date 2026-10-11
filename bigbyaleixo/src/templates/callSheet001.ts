@@ -20,7 +20,7 @@ const TRANS_PK: ColumnDef = {
 };
 const LOCATION: ColumnDef = { key: 'location', label: 'Local', aliases: ['local', 'base'], align: 'center', weight: 1.1 };
 
-const PERSON_COLUMNS = [NAME, STATUS, LOCATION];
+const PERSON_COLUMNS = [NAME, STATUS, TRANS_PK, LOCATION];
 const CAMERA_COLUMNS = [NUMBER, NAME, STATUS, TRANS_PK, LOCATION];
 
 const role = (key: SectionDef['key'], group: string, title: string, roleLabel: string, aliases: string[]): SectionDef => ({
@@ -44,13 +44,11 @@ export const callSheet001: CallSheetTemplate = {
     { key: 'competition', label: 'Competição', aliases: ['competicao', 'prova', 'campeonato', 'liga'], kind: 'text', group: 'title' },
     { key: 'event', label: 'Evento / Jogo', aliases: ['evento', 'jogo', 'programa'], kind: 'text', group: 'title' },
     { key: 'pf', label: 'PF', aliases: ['pf'], kind: 'code', group: 'title' },
-    { key: 'day', label: 'Dia', aliases: ['dia'], kind: 'date', group: 'title' },
     { key: 'date', label: 'Data', aliases: ['data', 'data dia', 'data do jogo'], kind: 'date', group: 'info' },
     { key: 'location', label: 'Local', aliases: ['local', 'localizacao', 'recinto'], kind: 'place', group: 'info' },
     { key: 'means', label: 'Meios', aliases: ['meios', 'meio', 'unidade movel', 'um'], kind: 'text', group: 'info' },
     { key: 'kickoff', label: 'KO', aliases: ['ko', 'k0', 'kick off', 'kickoff', 'hora do jogo', 'inicio'], kind: 'time', group: 'info' },
     { key: 'setup', label: 'Modelo', aliases: ['modelo', 'setup', 'configuracao'], kind: 'text', group: 'info' },
-    { key: 'id', label: 'ID', aliases: ['id'], kind: 'code', group: 'info' },
     {
       key: 'crew',
       label: 'Nº de elementos',
@@ -59,8 +57,6 @@ export const callSheet001: CallSheetTemplate = {
       group: 'info',
     },
     { key: 'missing', label: 'Faltam', aliases: ['faltam', 'falta', 'em falta'], kind: 'count', group: 'info' },
-    { key: 'lx', label: 'LX', aliases: ['lx', 'lisboa'], kind: 'count', group: 'info' },
-    { key: 'pt', label: 'PT', aliases: ['pt', 'porto'], kind: 'count', group: 'info' },
     { key: 'departure', label: 'Saída', aliases: ['saida', 'hora de saida', 'partida'], kind: 'time', group: 'logistics' },
     { key: 'origin', label: 'De', aliases: ['de', 'origem', 'partida de'], kind: 'place', group: 'logistics' },
     { key: 'notes', label: 'Observações', aliases: ['observacoes', 'observacao', 'obs', 'notas'], kind: 'note', group: 'notes' },
@@ -88,7 +84,6 @@ export const callSheet001: CallSheetTemplate = {
     role('ccu', 'technical', 'CCU', 'CCU', ['ccu', 'op ccu', 'controlo de camaras', 'controlo de imagem']),
     role('materialManagers', 'technical', 'RESP. MATERIAL', 'Resp. Material', ['resp material', 'responsavel material', 'responsavel de material', 'resp de material', 'resp mat']),
     role('dsngRf', 'technical', 'DSNG / RF', 'DSNG / RF', ['dsng rf', 'dsng', 'dsngrf', 'dsng e rf', 'sng']),
-    role('cablecam', 'technical', 'CABLECAM', 'Cablecam', ['cablecam', 'cable cam', 'cabocam']),
     { key: 'cameras', title: 'Op. Câmara', layout: 'list', aliases: ['camaras', 'camara', 'cameras', 'camera', 'op camara', 'operadores de camara', 'cam'], columns: CAMERA_COLUMNS },
     list('evs', 'Op. EVS', ['evs', 'op evs', 'operador evs', 'operadores evs']),
     list('soundOperators', 'Op. Som', ['op som', 'operador de som', 'operadores de som', 'operador som', 'op de som']),
@@ -105,8 +100,7 @@ export const callSheet001: CallSheetTemplate = {
       layout: 'table',
       aliases: ['plano de trabalho', 'plano trabalho', 'plano'],
       columns: [
-        { key: 'phase', label: 'Fase', aliases: ['fase'], align: 'left', weight: 1.4 },
-        { key: 'time', label: 'Hora', aliases: ['hora', 'horas'], align: 'left', weight: 0.9 },
+        { key: 'time', label: 'Hora', aliases: ['hora', 'horas'], align: 'left', weight: 1.4 },
         { key: 'description', label: 'Descrição', aliases: ['descricao'], align: 'left', weight: 5 },
         { key: 'means', label: 'Meios / Obs.', aliases: ['meios obs', 'meios', 'obs'], align: 'left', weight: 1.4 },
       ],

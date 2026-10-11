@@ -179,7 +179,7 @@ export function parseHeader(layout: PageLayout, template: CallSheetTemplate, tak
     return { ...cellField(cell), value: match ? match[1] : cell.text, confidence: Math.min(cell.source.confidence, INFERRED_CONFIDENCE) };
   };
   const claim = (key: HeaderKey, test: (cell: LayoutCell) => boolean): void => {
-    if (filled.has(key)) return;
+    if (filled.has(key) || !template.headerFields.some((field) => field.key === key)) return;
     const cell = loose.find((candidate) => !used.has(candidate) && test(candidate));
     if (!cell) return;
     header[key] = inferred(cell);

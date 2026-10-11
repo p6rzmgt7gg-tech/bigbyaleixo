@@ -7,6 +7,7 @@ import { isImageTooSmall } from '../ocr/imagePreprocessor';
 import type { PipelineErrorCode } from '../ocr/pipeline';
 import { useSession } from '../state/session';
 import { ERROR_MESSAGES } from '../utils/messages';
+import { pdfFirstPageToPng, isPdf } from '../utils/pdfToImage';
 import { checkImageFile, isHeic } from '../utils/validators';
 
 /** Lê as dimensões da imagem; falha se o ficheiro não for uma imagem válida. */
@@ -22,12 +23,22 @@ export function HomePage() {
   const navigate = useNavigate();
   const [problem, setProblem] = useState<PipelineErrorCode | null>(null);
 
-  const selectFile = async (file: File): Promise<void> => {
+  const selectFile = async (picked: File): Promise<void> => {
     setProblem(null);
-    const invalid = checkImageFile(file);
+    const invalid = checkImageFile(picked);
     if (invalid) {
       setProblem(invalid);
       return;
+    }
+    // PDF: lê-se a primeira página, desenhada como imagem.
+    let file = picked;
+    if (isPdf(picked)) {
+      try {
+        file = await pdfFirstPageToPng(picked);
+      } catch {
+        setProblem('unreadable');
+        return;
+      }
     }
     let size: { width: number; height: number };
     try {

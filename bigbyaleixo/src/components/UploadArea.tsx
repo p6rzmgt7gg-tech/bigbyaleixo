@@ -37,7 +37,7 @@ export function UploadArea({ onFile }: UploadAreaProps) {
       <button type="button" className="button" onClick={() => input.current?.click()}>
         Escolher ficheiro
       </button>
-      <p className="dropzone__formats">JPG, JPEG, PNG ou HEIC, até 20 MB</p>
+      <p className="dropzone__formats">JPG, JPEG, PNG, HEIC ou PDF, até 20 MB</p>
       <input
         ref={input}
         type="file"

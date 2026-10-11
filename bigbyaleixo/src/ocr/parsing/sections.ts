@@ -513,7 +513,8 @@ export class SectionParser {
    */
   private tableRows(anchor: Anchor): SheetRow[] {
     const section = anchor.section;
-    const hasPhase = section.columns.some((column) => column.key === 'phase');
+    // As fases (Pré-jogo, Intervalo…) guardam-se sempre no plano de trabalho, mesmo sem coluna própria.
+    const hasPhase = section.key === 'workPlan' || section.columns.some((column) => column.key === 'phase');
     const lead = section.columns.find((column) => column.key !== 'phase')?.key;
     const out: SheetRow[] = [];
     let phase: Field | null = null;
