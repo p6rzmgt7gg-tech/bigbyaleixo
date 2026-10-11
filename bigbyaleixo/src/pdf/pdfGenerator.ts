@@ -11,7 +11,7 @@ import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
 import { withDepartures, withTeamLogistics } from '../utils/logistics';
 import { formatDateTime, pdfFileName } from '../utils/formatters';
-import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, type Rgb } from './pdfStyles';
+import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, VEHICLE_TINTS, type Rgb } from './pdfStyles';
 
 /** Ficheiros TTF da Barlow Condensed (ver src/pdf/fonts). */
 export interface PdfFonts {
@@ -404,6 +404,7 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
     const withDepartures = groups.some((group) => group.time !== '' || group.place !== '');
     if (groups.length === 0) groups.push({ time: '', place: '', rows: [] });
 
+    let vehicleIndex = 0;
     groups.forEach((group, groupIndex) => {
       if (withDepartures && (group.time !== '' || group.place !== '')) lines.push(departureLine(group.time, group.place, groupIndex > 0 ? 4 : 0));
       if (groupIndex === 0 || withDepartures) {
@@ -416,8 +417,9 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
         });
       }
       for (const row of group.rows) {
-        lines.push(
-          textRow(
+        // Cada viatura com um fundo suave (cores alternadas): vê-se onde começa e acaba a sua equipa.
+        const tint = VEHICLE_TINTS[vehicleIndex++ % VEHICLE_TINTS.length];
+        const content = textRow(
             type,
             layout.map((entry) => ({
               text: entry.column.key === 'passengers' ? value(row, 'passengers').split(/\s*[,;]\s*/).filter(Boolean).join('\n') : value(row, entry.column.key),
@@ -427,8 +429,14 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
               tint: COLOR.navy,
               size: SIZE.table,
             })),
-          ),
-        );
+          );
+        lines.push({
+          height: content.height + 3,
+          draw: (canvas, left, top) => {
+            canvas.rect(left - 3, top + 1, width + 3, content.height + 1, tint);
+            content.draw(canvas, left, top + 1);
+          },
+        });
       }
     });
   }
