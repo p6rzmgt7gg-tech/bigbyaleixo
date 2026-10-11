@@ -42,6 +42,8 @@ export interface AnalysisOptions {
   signal?: AbortSignal;
   /** Como preparar a imagem; por omissão, na própria thread. O browser usa um Web Worker. */
   prepare?: (source: RgbaImage) => PreparedImage | Promise<PreparedImage>;
+  /** Texto já conhecido com a posição (PDF com texto): dispensa o OCR. */
+  cells?: TextCell[];
 }
 
 /** Percentagem em que cada fase começa. */
@@ -61,7 +63,7 @@ export function throwIfAborted(signal?: AbortSignal): void {
 }
 
 /** Analisa uma imagem já descodificada. Não depende do DOM: corre no browser e em testes. */
-export async function analyzeImage(source: RgbaImage, engine: OcrEngine, template: CallSheetTemplate, options: AnalysisOptions = {}): Promise<AnalysisResult> {
+export async function analyzeImage(source: RgbaImage, engine: OcrEngine | null, template: CallSheetTemplate, options: AnalysisOptions = {}): Promise<AnalysisResult> {
   const { onProgress, signal, prepare = prepareImage } = options;
   const report = (stage: PipelineStage, fraction = 0): void => onProgress?.({ stage, percent: stagePercent(stage, fraction) });
   const { width, height } = source;
@@ -71,15 +73,18 @@ export async function analyzeImage(source: RgbaImage, engine: OcrEngine, templat
   const prepared = await prepare(source);
   throwIfAborted(signal);
   const { clean, rules, segments, textHeight } = prepared;
-  if (segments.length === 0 || segments.length > MAX_SEGMENTS) throw new PipelineError('unreadable');
+  if (!options.cells && (segments.length === 0 || segments.length > MAX_SEGMENTS)) throw new PipelineError('unreadable');
 
-  // 3. OCR célula a célula.
-  const cells: TextCell[] = [];
-  for (let i = 0; i < segments.length; i++) {
-    throwIfAborted(signal);
-    report('ocr', i / segments.length);
-    const cell = await engine.readCell(clean, segments[i], textHeight);
-    if (cell) cells.push(cell);
+  // 3. OCR célula a célula (ou o texto do PDF, quando o há).
+  const cells: TextCell[] = options.cells ? [...options.cells] : [];
+  if (!options.cells) {
+    if (!engine) throw new PipelineError('unreadable');
+    for (let i = 0; i < segments.length; i++) {
+      throwIfAborted(signal);
+      report('ocr', i / segments.length);
+      const cell = await engine.readCell(clean, segments[i], textHeight);
+      if (cell) cells.push(cell);
+    }
   }
   if (cells.length === 0) throw new PipelineError('unreadable');
 

@@ -2,7 +2,9 @@
  * Um call sheet em PDF passa a imagem antes da leitura: a primeira página é desenhada
  * no browser (pdf.js) com resolução suficiente para o OCR. Nada sai do computador.
  */
-import { PDFWorker, getDocument } from 'pdfjs-dist';
+import { PDFWorker, Util, getDocument } from 'pdfjs-dist';
+import type { TextCell } from '../ocr/ocrEngine';
+import { textItemsToCells, type PdfTextItem } from './pdfText';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 
 export function isPdf(file: { name: string; type: string }): boolean {
@@ -33,9 +35,28 @@ export async function pdfFirstPageToPng(file: File): Promise<File> {
     await page.render({ canvasContext: context, viewport }).promise;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('PDF sem imagem');
-    return new File([blob], file.name.replace(/\.pdf$/i, '') + '.png', { type: 'image/png' });
+    const image = new File([blob], file.name.replace(/\.pdf$/i, '') + '.png', { type: 'image/png' });
+    // Se o PDF tiver texto (exportado do Excel, por exemplo), usa-se esse texto em vez do OCR.
+    const content = await page.getTextContent();
+    const items: PdfTextItem[] = [];
+    for (const item of content.items) {
+      if (!('str' in item) || !item.str.trim()) continue;
+      const tx = Util.transform(viewport.transform, item.transform);
+      items.push({ text: item.str, x: tx[4], baseline: tx[5], height: Math.hypot(tx[2], tx[3]), width: item.width * viewport.scale });
+    }
+    const cells = textItemsToCells(items);
+    if (cells.length >= 20) PDF_TEXT.set(image, cells);
+    return image;
   } finally {
     await task.destroy().catch(() => undefined);
     worker.destroy();
   }
 }
+
+const PDF_TEXT = new WeakMap<File, TextCell[]>();
+
+/** Texto do PDF (com posições na imagem desenhada) associado ao ficheiro de imagem gerado. */
+export function pdfTextFor(file: File): TextCell[] | undefined {
+  return PDF_TEXT.get(file);
+}
+

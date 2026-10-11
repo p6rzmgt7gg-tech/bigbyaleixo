@@ -7,6 +7,7 @@ import { checkImageFile, isHeic } from '../utils/validators';
 import { decodeImageFile, isImageTooSmall } from './imagePreprocessor';
 import { OcrEngine, type OcrAssetPaths } from './ocrEngine';
 import { analyzeImage, PipelineError, stagePercent, throwIfAborted, type AnalysisOptions, type AnalysisResult } from './pipeline';
+import { pdfTextFor } from '../utils/pdfToImage';
 import { prepareImage, type PreparedImage } from './prepare';
 import type { PrepareResponse } from './prepare.worker';
 import type { RgbaImage } from './raster';
@@ -43,6 +44,17 @@ export async function processCallSheet(file: File, template: CallSheetTemplate, 
   if (problem) throw new PipelineError(problem);
 
   onProgress?.({ stage: 'prepare', percent: stagePercent('prepare', 0.1) });
+  // PDF com texto: o texto vem do próprio PDF (exato), sem OCR.
+  const pdfCells = pdfTextFor(file);
+  if (pdfCells) {
+    let source: RgbaImage;
+    try {
+      source = await decodeImageFile(file);
+    } catch {
+      throw new PipelineError('unreadable');
+    }
+    return analyzeImage(source, null, template, { onProgress, signal, prepare: prepareInWorker, cells: pdfCells });
+  }
   // O motor arranca em paralelo com a leitura da imagem (na primeira vez descarrega o modelo).
   const enginePromise = OcrEngine.create(ocrAssetPaths(), (fraction) => {
     onProgress?.({ stage: 'prepare', percent: stagePercent('prepare', 0.2 + fraction * 0.8) });

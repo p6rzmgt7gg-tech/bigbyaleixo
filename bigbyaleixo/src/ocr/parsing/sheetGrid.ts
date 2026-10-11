@@ -118,9 +118,13 @@ export function findBars(image: RgbaImage, textHeight: number): Bar[] {
     if (bar) bar.y1 = Math.max(bar.y1, piece.y1);
     else bars.push({ ...piece });
   }
-  return bars
+  const kept = bars
     .filter((bar) => bar.y1 - bar.y0 + 1 >= Math.max(8, textHeight * 1.1) && bar.y1 - bar.y0 < textHeight * 4)
     .sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+  // A primeira fila de blocos tem uma barra em cada uma das três colunas; o que estiver acima
+  // (resumos coloridos por cima da folha, num PDF exportado) não é título de bloco.
+  const fullRow = kept.find((bar) => kept.filter((other) => Math.abs(other.y0 - bar.y0) <= 3).length >= 3);
+  return fullRow ? kept.filter((bar) => bar.y0 >= fullRow.y0 - 3) : kept;
 }
 
 /** Matiz (0..360) dominante do fundo do cabeçalho, ou null se não for colorido. */
@@ -145,6 +149,34 @@ function headerHue(image: RgbaImage, bottom: number): number | null {
   if (total < 200) return null;
   const best = bins.indexOf(Math.max(...bins));
   return best * 10 + 5;
+}
+
+/** Topo do cabeçalho colorido: sobe a partir da primeira barra enquanto as linhas forem coloridas. */
+function coloredHeaderTop(image: RgbaImage, barTop: number, x0: number, x1: number, textHeight: number): number {
+  const { data, width } = image;
+  const colored = (y: number): boolean => {
+    let count = 0;
+    let total = 0;
+    for (let x = Math.max(0, Math.round(x0)); x < Math.min(width, Math.round(x1)); x += 2) {
+      const i = (y * width + x) * 4;
+      const max = Math.max(data[i], data[i + 1], data[i + 2]);
+      const min = Math.min(data[i], data[i + 1], data[i + 2]);
+      total++;
+      if (max > 120 && max - min > 70) count++;
+    }
+    return total > 0 && count / total >= 0.25;
+  };
+  let y = barTop - 1;
+  let top = barTop;
+  let gap = 0;
+  while (y >= 0) {
+    if (colored(y)) {
+      top = y;
+      gap = 0;
+    } else if (++gap > textHeight * 1.5) break;
+    y--;
+  }
+  return top === barTop ? 0 : top;
 }
 
 /** Texto a cor laranja/vermelha (nomes riscados, retirados da equipa). */
@@ -280,8 +312,12 @@ export function parseSheetGrid(layout: PageLayout, template: CallSheetTemplate, 
     });
   }
 
-  // 3. Cabeçalho: tudo o que está acima da primeira barra.
-  const head = layout.cells.filter((cell) => cell.yc < top - 2);
+  // 3. Cabeçalho: o bloco colorido logo acima da primeira barra, na largura da folha
+  //    (num PDF exportado pode haver resumos por cima, que não fazem parte da folha).
+  const sheetX0 = Math.min(...bars.map((bar) => bar.x0));
+  const sheetX1 = Math.max(...bars.map((bar) => bar.x1));
+  const headerTop = coloredHeaderTop(image, top, sheetX0, sheetX1, th);
+  const head = layout.cells.filter((cell) => cell.yc < top - 2 && cell.yc >= headerTop && cell.xc >= sheetX0 - th && cell.xc <= sheetX1 + th);
   head.forEach((cell) => used.add(cell));
   const headLines: LayoutCell[][] = [];
   for (const cell of [...head].sort((a, b) => a.yc - b.yc)) {
