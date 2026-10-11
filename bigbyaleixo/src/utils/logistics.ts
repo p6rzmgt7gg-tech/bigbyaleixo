@@ -21,6 +21,30 @@ export function vehicleCode(text: string): string {
   return `${match[1].toUpperCase()}-${rest}`;
 }
 
+/**
+ * Célula Trans/Pk: fica só o código da viatura (P-R3, L-Aux, …). As anotações que vêm
+ * junto (ex.: "erm", da coluna seguinte) não se transcrevem.
+ */
+export function cleanTransPk(text: string): string {
+  const code = text.trim().split(/\s+/).find((token) => /^[PLpl]-\S+/.test(token));
+  return code ?? text.trim();
+}
+
+/** Mantém em cada linha da equipa só o código da viatura na coluna Trans/Pk. */
+export function withCleanTransPk(document: CallSheetDocument): CallSheetDocument {
+  const sections = Object.fromEntries(
+    Object.entries(document.sections).map(([key, rows]) => [
+      key,
+      (rows as SheetRow[]).map((row) => {
+        if (!row.transPk) return row;
+        const cleaned = cleanTransPk(row.transPk.value);
+        return cleaned === row.transPk.value ? row : { ...row, transPk: { ...row.transPk, value: cleaned } };
+      }),
+    ]),
+  ) as CallSheetDocument['sections'];
+  return { ...document, sections };
+}
+
 /** Nome por extenso das carrinhas de material. */
 export function vehicleLabel(code: string): string {
   if (code === 'P-Aux') return 'P-Aux (carrinha material Porto)';

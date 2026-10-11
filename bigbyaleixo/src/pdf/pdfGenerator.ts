@@ -260,7 +260,7 @@ function roleGroupBlock(type: Typesetter, title: string, sections: SectionDef[],
   return lines.length > 1 ? { title, lines } : null;
 }
 
-/** Lista numerada: Nº, nome, (trans/pk), estado, local. */
+/** Lista numerada: Nº, nome, (trans/pk), estado. */
 /** `nameX`: onde começam os nomes (alinhados com os nomes da Equipa). */
 /** Listas com número à esquerda do nome (as outras só têm o nome). */
 const NUMBERED_LISTS = new Set(['cameras', 'evs']);
@@ -269,11 +269,10 @@ function listBlock(type: Typesetter, section: SectionDef, rows: SheetRow[], widt
   const showNumber = NUMBERED_LISTS.has(section.key);
   const hasNumber = section.columns.some((column) => column.key === 'number');
   const hasTransport = rows.some((row) => value(row, 'transPk') !== '');
-  const locationWidth = 24;
   const statusWidth = 30;
   const transportWidth = hasTransport ? 38 : 0;
   const numberWidth = nameX;
-  const nameWidth = width - numberWidth - transportWidth - statusWidth - locationWidth - 4;
+  const nameWidth = width - numberWidth - transportWidth - statusWidth - 4;
   const lines: Line[] = [subheading(section.title)];
   rows.forEach((row, index) => {
     const number = showNumber ? (hasNumber ? value(row, 'number') : String(index + 1)) : '';
@@ -289,7 +288,6 @@ function listBlock(type: Typesetter, section: SectionDef, rows: SheetRow[], widt
       x += transportWidth;
     }
     cells.push({ text: value(row, 'status'), x, width: statusWidth - 2, weight: 'regular', tint: COLOR.navy });
-    cells.push({ text: value(row, 'location'), x: x + statusWidth, width: locationWidth, weight: 'regular', tint: COLOR.navy });
     lines.push(textRow(type, cells));
   });
   return { title: section.title, lines, small: true };

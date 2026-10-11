@@ -18,10 +18,10 @@ const TRANS_PK: ColumnDef = {
   align: 'center',
   weight: 1.3,
 };
-const LOCATION: ColumnDef = { key: 'location', label: 'Local', aliases: ['local', 'base'], align: 'center', weight: 1.1 };
 
-const PERSON_COLUMNS = [NAME, STATUS, TRANS_PK, LOCATION];
-const CAMERA_COLUMNS = [NUMBER, NAME, STATUS, TRANS_PK, LOCATION];
+// A coluna a seguir ao Trans/Pk (Loc) tem anotações internas: não se transcreve.
+const PERSON_COLUMNS = [NAME, STATUS, TRANS_PK];
+const CAMERA_COLUMNS = [NUMBER, NAME, STATUS, TRANS_PK];
 
 const role = (key: SectionDef['key'], group: string, title: string, roleLabel: string, aliases: string[]): SectionDef => ({
   key,

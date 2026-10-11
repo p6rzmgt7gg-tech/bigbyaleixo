@@ -55,10 +55,11 @@ describe('parser do template 001', () => {
   });
 
   it('separa cada linha em colunas, sem juntar tudo num campo', () => {
+    // A coluna Loc (anotações internas) não é transcrita.
     expect(sections.cameras.map((row) => [row.number?.value, row.name?.value, row.status?.value, row.location?.value])).toEqual([
-      ['1', 'Ana Exemplo', 'ok', 'Pt'],
-      ['2', 'Bruno Teste', 'ok', 'Lx'],
-      ['3', 'Carla Modelo', '', 'Pt'],
+      ['1', 'Ana Exemplo', 'ok', undefined],
+      ['2', 'Bruno Teste', 'ok', undefined],
+      ['3', 'Carla Modelo', '', undefined],
     ]);
     expect(sections.evs).toHaveLength(1);
     expect(sections.evs[0].name?.value).toBe('Duarte Fictício');
@@ -178,7 +179,7 @@ describe('formato com cargos, plano de trabalho e logística', () => {
   it('não confunde a numeração da lista com dados', () => {
     expect(document.sections.evs).toHaveLength(1);
     expect(document.sections.evs[0].name?.value).toBe('LUÍS TESTE');
-    expect(document.sections.evs[0].location?.value).toBe('Pt');
+    expect(document.sections.evs[0].location).toBeUndefined();
   });
 
   it('lê o plano de trabalho com fase e junta a linha partida', () => {

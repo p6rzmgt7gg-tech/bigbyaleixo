@@ -4,7 +4,7 @@
  * template. Nunca inventa valores: o que não for encontrado fica vazio.
  */
 import { withFixedRows } from '../templates/fixedRows';
-import { withTeamLogistics } from '../utils/logistics';
+import { withCleanTransPk, withTeamLogistics } from '../utils/logistics';
 import type { CallSheetTemplate } from '../templates';
 import type { CallSheetDocument, Field, HeaderKey, SectionKey, SheetRow } from '../types/callSheet';
 import { combinedConfidence, type TextCell } from './ocrEngine';
@@ -138,7 +138,7 @@ export function parseCallSheet(input: ParseInput, template: CallSheetTemplate): 
   const people = Object.values(blocks.sections).reduce((total, rows) => total + rows.length, 0);
   return {
     // As linhas fixas do template (ex.: Início da Montagem) entram depois de contar o que foi lido.
-    document: withFixedRows(withTeamLogistics({ documentType: 'call_sheet', template: template.id, header, sections: blocks.sections }), template),
+    document: withFixedRows(withTeamLogistics(withCleanTransPk({ documentType: 'call_sheet', template: template.id, header, sections: blocks.sections })), template),
     sectionsFound: [...blocks.found],
     people,
     unassigned,
