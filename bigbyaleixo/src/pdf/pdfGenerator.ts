@@ -9,7 +9,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, PDFEmbeddedPage, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates';
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
-import { withDepartures, withTeamLogistics } from '../utils/logistics';
+import { vehicleCode, withDepartures, withTeamLogistics } from '../utils/logistics';
 import { formatDateTime, pdfFileName } from '../utils/formatters';
 import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, VEHICLE_TINT, type Rgb } from './pdfStyles';
 
@@ -31,6 +31,8 @@ export interface PdfSections {
   logistics: boolean;
   notes: boolean;
   cameraMap: boolean;
+  /** Pessoas marcadas P-Vlt (ou L-Vlt) na logística. */
+  vlt: boolean;
 }
 
 export interface PdfOptions {
@@ -786,7 +788,7 @@ async function embedLogo(pdf: PDFDocument, logo: PdfLogo | null | undefined): Pr
 
 export async function generateCallSheetPdf(source: CallSheetDocument, template: CallSheetTemplate, options: PdfOptions): Promise<GeneratedPdf> {
   // Viaturas, condutores e passageiros deduzidos da equipa quando a logística está vazia.
-  const document = withDepartures(withTeamLogistics(source));
+  let document = withDepartures(withTeamLogistics(source));
   const generatedAt = options.generatedAt ?? new Date();
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -799,7 +801,12 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
   });
   const logo = await embedLogo(pdf, options.logo);
   const clientLogo = await embedLogo(pdf, options.clientLogo);
-  const include: PdfSections = { logistics: true, notes: true, cameraMap: true, ...options.include };
+  const include: PdfSections = { logistics: true, notes: true, cameraMap: true, vlt: true, ...options.include };
+  // Sem a opção P-Vlt, as viaturas Vlt saem da logística.
+  if (!include.vlt) {
+    const drivers = (document.sections.drivers ?? []).filter((row) => !/^[PL]-Vlt$/.test(vehicleCode(row.vehicle?.value ?? '')));
+    document = { ...document, sections: { ...document.sections, drivers } };
+  }
   const cameraMap = include.cameraMap ? await embedLogo(pdf, options.cameraMap) : null;
 
   const get = (key: HeaderKey): string => (document.header[key]?.value ?? '').trim();

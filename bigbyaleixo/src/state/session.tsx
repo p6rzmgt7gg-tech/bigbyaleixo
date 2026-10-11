@@ -89,7 +89,7 @@ interface StoredSession {
   savedAt: number;
 }
 
-const ALL_SECTIONS: PdfSections = { logistics: true, notes: true, cameraMap: true };
+const ALL_SECTIONS: PdfSections = { logistics: true, notes: true, cameraMap: true, vlt: false };
 
 const EMPTY: SessionState = { source: null, logo: null, cameraMap: null, extraFiles: [], pdfSections: ALL_SECTIONS, clientLogo: null, fileName: null, document: null, unassigned: [], dirty: false, savedAt: null };
 

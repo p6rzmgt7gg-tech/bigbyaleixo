@@ -6,6 +6,7 @@ import { CameraMapPicker, ExtraFilesPicker } from './LogoPicker';
 const OPTIONS: { key: keyof PdfSections; label: string }[] = [
   { key: 'notes', label: 'Observações' },
   { key: 'cameraMap', label: 'Mapa de Câmaras' },
+  { key: 'vlt', label: 'Pessoas P-Vlt na logística' },
 ];
 
 /** Opções antes de gerar o PDF: secções a incluir, mapa de câmaras e logótipo do cliente (o da Medialuso é fixo). */
