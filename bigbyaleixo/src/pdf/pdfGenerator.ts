@@ -369,9 +369,10 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
   }
 
   {
-    // No PDF: Viatura, Condutor, Passageiros (um por linha).
+    // No PDF: Viatura, Condutor, Passageiros (um por linha). A hora e o local de saída de cada
+    // viatura agrupam as linhas: cada saída tem uma linha "Saída: … De: …" por cima das suas viaturas.
     const order: ColumnKey[] = ['vehicle', 'name', 'passengers'];
-    const columns = [...section.columns].sort((a, b) => (order.indexOf(a.key) + 99) % 99 - ((order.indexOf(b.key) + 99) % 99));
+    const columns = section.columns.filter((column) => order.includes(column.key)).sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     const total = columns.reduce((sum, column) => sum + column.weight, 0);
     let x = 0;
     const layout = columns.map((column) => {
@@ -380,28 +381,67 @@ function logisticsBlock(type: Typesetter, section: SectionDef, document: CallShe
       x += columnWidth;
       return entry;
     });
-    lines.push({
-      ...textRow(
-        type,
-        layout.map((entry) => ({ text: entry.column.label, x: entry.x, width: entry.width, weight: 'bold' as Weight, tint: COLOR.ink, size: SIZE.columnHeader })),
-      ),
-      keepWithNext: true,
-    });
+    const timeLabel = section.columns.find((column) => column.key === 'time')?.label ?? 'Saída';
+    const placeLabel = fields.find((field) => field.key === 'origin')?.label ?? 'De';
+    const groups: { time: string; place: string; rows: SheetRow[] }[] = [];
     for (const row of rows) {
-      lines.push(
-        textRow(
-          type,
-          layout.map((entry) => ({
-            text: entry.column.key === 'passengers' ? value(row, 'passengers').split(/\s*[,;]\s*/).filter(Boolean).join('\n') : value(row, entry.column.key),
-            x: entry.x,
-            width: entry.width,
-            weight: 'regular' as Weight,
-            tint: COLOR.navy,
-            size: SIZE.table,
-          })),
-        ),
-      );
+      const time = value(row, 'time');
+      const place = value(row, 'location');
+      const group = groups.find((candidate) => candidate.time === time && candidate.place === place);
+      if (group) group.rows.push(row);
+      else groups.push({ time, place, rows: [row] });
     }
+    // Sem saídas por viatura: tudo como antes (só a saída geral do cabeçalho).
+    const withDepartures = groups.some((group) => group.time !== '' || group.place !== '');
+    if (groups.length === 0) groups.push({ time: '', place: '', rows: [] });
+
+    groups.forEach((group, groupIndex) => {
+      if (withDepartures && (group.time !== '' || group.place !== '')) {
+        const parts = [
+          group.time !== '' ? { label: `${timeLabel}:`, text: group.time } : null,
+          group.place !== '' ? { label: `${placeLabel}:`, text: group.place } : null,
+        ].filter((part): part is { label: string; text: string } => part !== null);
+        lines.push({
+          height: SPACE.row + (groupIndex > 0 ? 6 : 2),
+          keepWithNext: true,
+          draw: (canvas, left, top) => {
+            let cursor = left;
+            const y = top + (groupIndex > 0 ? 4 : 0);
+            for (const part of parts) {
+              canvas.text(part.label, cursor, y, 'bold', SIZE.body, COLOR.ink, SPACE.row);
+              cursor += type.width(part.label, 'bold', SIZE.body) + 4;
+              const text = type.wrap(part.text, 'bold', SIZE.body, Math.max(40, left + width - cursor))[0] ?? '';
+              canvas.text(text, cursor, y, 'bold', SIZE.body, COLOR.navy, SPACE.row);
+              cursor += type.width(text, 'bold', SIZE.body) + 14;
+            }
+          },
+        });
+      }
+      if (groupIndex === 0 || withDepartures) {
+        lines.push({
+          ...textRow(
+            type,
+            layout.map((entry) => ({ text: entry.column.label, x: entry.x, width: entry.width, weight: 'bold' as Weight, tint: COLOR.ink, size: SIZE.columnHeader })),
+          ),
+          keepWithNext: true,
+        });
+      }
+      for (const row of group.rows) {
+        lines.push(
+          textRow(
+            type,
+            layout.map((entry) => ({
+              text: entry.column.key === 'passengers' ? value(row, 'passengers').split(/\s*[,;]\s*/).filter(Boolean).join('\n') : value(row, entry.column.key),
+              x: entry.x,
+              width: entry.width,
+              weight: 'regular' as Weight,
+              tint: COLOR.navy,
+              size: SIZE.table,
+            })),
+          ),
+        );
+      }
+    });
   }
   return { title: section.title, lines };
 }

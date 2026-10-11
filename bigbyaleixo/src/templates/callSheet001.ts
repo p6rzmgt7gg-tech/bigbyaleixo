@@ -127,6 +127,8 @@ export const callSheet001: CallSheetTemplate = {
       layout: 'table',
       aliases: ['logistica transportes', 'logistica', 'transportes', 'condutores', 'motoristas'],
       columns: [
+        { key: 'time', label: 'Saída', aliases: ['hora de saida', 'saida'], align: 'center', weight: 1 },
+        { key: 'location', label: 'Local de saída', aliases: ['local de saida', 'partida de', 'origem'], align: 'left', weight: 1.8 },
         { key: 'name', label: 'Condutor', aliases: ['condutor', 'condutores', 'motorista'], align: 'left', weight: 2 },
         { key: 'vehicle', label: 'Viatura', aliases: ['viatura', 'viaturas', 'carro', 'veiculo'], align: 'left', weight: 2.1 },
         { key: 'passengers', label: 'Passageiros', aliases: ['passageiros', 'passageiro'], align: 'left', weight: 3.1 },
