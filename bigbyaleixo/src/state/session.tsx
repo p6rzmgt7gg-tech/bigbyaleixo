@@ -1,6 +1,6 @@
 /**
  * Estado da sessão: a imagem carregada (apenas em memória), os dados extraídos e as
- * edições do utilizador. "Guardar dados" grava os dados estruturados no sessionStorage
+ * edições do utilizador. Os dados estruturados ficam guardados sozinhos no sessionStorage
  * deste separador, para sobreviverem a um recarregamento; a imagem original nunca é gravada.
  */
 import type { PdfSections } from '../pdf/pdfGenerator';

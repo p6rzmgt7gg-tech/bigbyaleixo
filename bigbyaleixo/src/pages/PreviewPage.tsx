@@ -1,5 +1,5 @@
 import { PdfOptions } from '../components/PdfOptions';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { HeaderEditor } from '../components/HeaderEditor';
 import { EditableTable } from '../components/EditableTable';
@@ -10,7 +10,6 @@ import { saveSession, useSession } from '../state/session';
 import { getTemplate } from '../templates';
 import type { BBox, CallSheetDocument, ColumnKey, HeaderKey, SectionKey } from '../types/callSheet';
 import { confidenceLevel, needsReview, rowLevel } from '../utils/fields';
-import { formatTime } from '../utils/formatters';
 import { NEEDS_REVIEW_MESSAGE } from '../utils/messages';
 
 /** Quantos campos lidos pelo OCR ainda pedem atenção, e quantas pessoas há no documento. */
@@ -44,7 +43,6 @@ export function PreviewPage() {
   const navigate = useNavigate();
   const [highlight, setHighlight] = useState<BBox | null>(null);
   const [confirmingReprocess, setConfirmingReprocess] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
   const { document } = state;
 
   const template = useMemo(() => getTemplate(document?.template ?? ''), [document?.template]);
@@ -53,21 +51,15 @@ export function PreviewPage() {
     [template],
   );
 
-  // Acabado de processar: guarda logo, para um recarregamento acidental não obrigar a repetir o OCR.
+  // Os dados ficam guardados sozinhos neste separador (sem botão), para um recarregamento
+  // acidental não obrigar a repetir a leitura nem perder as correções. Nada sai do browser.
+  const latest = useRef(state);
+  latest.current = state;
   useEffect(() => {
-    if (document && state.savedAt === null && !state.dirty) {
-      const now = Date.now();
-      if (saveSession(state, now)) dispatch({ type: 'saved', at: now });
-    }
-  }, [document, state, dispatch]);
-
-  // Avisa antes de sair com alterações por guardar.
-  useEffect(() => {
-    if (!state.dirty) return;
-    const warn = (event: BeforeUnloadEvent): void => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [state.dirty]);
+    if (!document) return;
+    const timer = window.setTimeout(() => saveSession(latest.current, Date.now()), 400);
+    return () => window.clearTimeout(timer);
+  }, [document]);
 
   const locate = useCallback((bbox: BBox | undefined) => setHighlight(bbox ?? null), []);
   const editCell = useCallback(
@@ -84,16 +76,6 @@ export function PreviewPage() {
 
   const { people, toConfirm, unrecognized } = summarize(document, columnsBySection);
   const blocks = template.sections.filter((section) => document.sections[section.key]?.length > 0).length;
-
-  const save = (): void => {
-    const now = Date.now();
-    if (saveSession(state, now)) {
-      dispatch({ type: 'saved', at: now });
-      setSaveFailed(false);
-    } else {
-      setSaveFailed(true);
-    }
-  };
 
   return (
     <main className="page page--wide">
@@ -217,18 +199,6 @@ export function PreviewPage() {
               )}
             </div>
             <div className="actionbar__group">
-              <span className="actionbar__status" role="status">
-                {saveFailed
-                  ? 'Este browser não permitiu guardar os dados.'
-                  : state.dirty
-                    ? 'Alterações por guardar'
-                    : state.savedAt
-                      ? `Guardado às ${formatTime(state.savedAt)}`
-                      : ''}
-              </span>
-              <button type="button" className="button" onClick={save} disabled={!state.dirty && state.savedAt !== null}>
-                Guardar dados
-              </button>
               <button type="button" className="button button--primary" onClick={() => navigate('/pdf')}>
                 Gerar PDF
               </button>
