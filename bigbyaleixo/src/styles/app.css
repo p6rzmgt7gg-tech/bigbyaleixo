@@ -1411,27 +1411,39 @@ td.table__confidence {
 }
 
 .table__move {
-  width: 56px;
-  white-space: nowrap;
+  width: 40px;
   text-align: center;
 }
 
-.table__move button {
-  width: 26px;
+.table__handle {
+  width: 36px;
   height: 36px;
   border: 0;
   background: transparent;
-  cursor: pointer;
-  font-size: 12px;
+  cursor: grab;
+  font-size: 18px;
   line-height: 1;
   color: var(--graphite);
+  touch-action: none;
 }
 
-.table__move button:hover:not(:disabled) {
+.table__handle:hover,
+.table__handle:focus-visible {
   color: var(--ink, #000);
 }
 
-.table__move button:disabled {
-  opacity: 0.25;
-  cursor: default;
+.table__handle:active {
+  cursor: grabbing;
+}
+
+.table tr.is-dragging td {
+  opacity: 0.45;
+}
+
+.table tr.is-drop-before td {
+  box-shadow: inset 0 3px 0 var(--ink, #000);
+}
+
+.table tr.is-drop-after td {
+  box-shadow: inset 0 -3px 0 var(--ink, #000);
 }

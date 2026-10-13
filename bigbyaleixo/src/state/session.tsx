@@ -69,7 +69,7 @@ export type SessionAction =
   | { type: 'cell-edited'; section: SectionKey; rowId: string; column: ColumnKey; value: string }
   | { type: 'row-added'; section: SectionKey }
   | { type: 'row-removed'; section: SectionKey; rowId: string }
-  | { type: 'row-moved'; section: SectionKey; rowId: string; delta: -1 | 1 }
+  | { type: 'row-moved'; section: SectionKey; rowId: string; to: number }
   | { type: 'saved'; at: number }
   | { type: 'logo-set'; logo: SessionLogo }
   | { type: 'logo-removed' }
@@ -209,9 +209,10 @@ function reducer(state: SessionState, action: SessionAction): SessionState {
       return editDocument(state, (document) => {
         const rows = [...(document.sections[action.section] ?? [])];
         const from = rows.findIndex((row) => row.id === action.rowId);
-        const to = from + action.delta;
-        if (from < 0 || to < 0 || to >= rows.length) return document;
-        [rows[from], rows[to]] = [rows[to], rows[from]];
+        const to = action.to;
+        if (from < 0 || to < 0 || to >= rows.length || to === from) return document;
+        const [moved] = rows.splice(from, 1);
+        rows.splice(to, 0, moved);
         return { ...document, sections: { ...document.sections, [action.section]: rows } };
       });
     case 'saved':

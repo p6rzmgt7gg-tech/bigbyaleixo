@@ -10,7 +10,7 @@ interface SectionEditorProps {
   onAdd: (section: SectionKey) => void;
   onRemove: (section: SectionKey, rowId: string) => void;
   /** Permite reordenar as linhas (plano de trabalho). */
-  onMove?: (section: SectionKey, rowId: string, delta: -1 | 1) => void;
+  onMove?: (section: SectionKey, rowId: string, to: number) => void;
   onLocate: (bbox: BBox | undefined) => void;
   /** Campos extra a mostrar entre o título e a tabela (ex.: saída e origem da logística). */
   children?: ReactNode;
@@ -31,7 +31,7 @@ export const SectionEditor = memo(function SectionEditor({ section, rows, onEdit
         rows={rows}
         onEdit={(rowId, column, value) => onEdit(section.key, rowId, column, value)}
         onRemove={(rowId) => onRemove(section.key, rowId)}
-        onMove={onMove ? (rowId, delta) => onMove(section.key, rowId, delta) : undefined}
+        onMove={onMove ? (rowId, to) => onMove(section.key, rowId, to) : undefined}
         onLocate={onLocate}
       />
       <div className="block__foot">
