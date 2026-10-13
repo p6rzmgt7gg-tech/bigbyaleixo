@@ -1,0 +1,259 @@
+/*
+ * Aspeto da zona de trabalho: o editor fala a mesma língua do PDF que gera.
+ * Títulos dos blocos em Barlow Condensed vermelha (como no PDF), valores em azul-marinho,
+ * folha branca contínua em vez de barras pretas repetidas. Só CSS: nada muda no funcionamento.
+ */
+
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 600;
+  font-display: swap;
+  src: url('../pdf/fonts/BarlowCondensed-600.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  font-weight: 700;
+  font-display: swap;
+  src: url('../pdf/fonts/BarlowCondensed-700.ttf') format('truetype');
+}
+
+:root {
+  --chart: #e4e6eb;
+  --panel: #f3f4f7;
+  --rule-soft: #e1e3e9;
+  --rule: #c3c7d1;
+  --red: #e93423;
+  --navy: #31375b;
+  --blush: #faeaeb;
+  --hold-tint: #fff6d6;
+  --stop-tint: #fde4e1;
+  --condensed: 'Barlow Condensed', 'Archivo', sans-serif;
+}
+
+/* Barra de topo: o passo atual sublinhado a vermelho, em vez da pílula branca. */
+.steps li[aria-current='step'] {
+  color: var(--paper);
+  background: none;
+  box-shadow: inset 0 -3px 0 var(--red);
+  border-radius: 0;
+}
+
+/* Original à esquerda: a folha assente sobre a mesa, com sombra. */
+.review__original {
+  background: #d3d6dd;
+  border-right: 0;
+}
+.viewer__bar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.viewer__canvas {
+  box-shadow: 0 1px 2px rgba(49, 55, 91, 0.18), 0 8px 24px rgba(49, 55, 91, 0.12);
+}
+
+/* Cabeça da revisão. */
+.review__data {
+  padding-top: 32px;
+}
+.review__head h1 {
+  font-family: var(--condensed);
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.notice {
+  border-left-width: 4px;
+  box-shadow: 0 1px 0 var(--rule-soft);
+}
+
+/* Grupos (Equipa, Técnica): título grande condensado, com régua vermelha curta. */
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 44px 0 -8px;
+  font-family: var(--condensed);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.group-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--ink);
+}
+
+/* Blocos: folha branca com o título vermelho do PDF, sem barra preta. */
+.block {
+  margin-top: 18px;
+  background: var(--paper);
+  border-top: 3px solid var(--red);
+  box-shadow: 0 1px 2px rgba(49, 55, 91, 0.08);
+}
+.block__title {
+  min-height: 44px;
+  padding: 0 14px;
+  background: var(--paper);
+  color: var(--red);
+  font-family: var(--condensed);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.block__count {
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--graphite);
+}
+.block__foot {
+  padding: 10px 14px 12px;
+  background: var(--paper);
+}
+
+/* Campos do evento: grelha regular, sem buracos cinzentos no fim das linhas. */
+.fields {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0;
+  background: var(--paper);
+  border: 0;
+}
+.field,
+.field--medium {
+  grid-column: auto;
+  border-right: 1px solid var(--rule-soft);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.field--wide {
+  grid-column: auto;
+}
+.field--full {
+  grid-column: 1 / -1;
+}
+.field label {
+  padding: 10px 14px 0;
+  font-size: 12.5px;
+}
+.field input,
+.field textarea {
+  padding: 3px 14px 11px;
+  color: var(--navy);
+  font-size: 16px;
+}
+
+/* Tabelas: cabeçalho discreto, valores em azul-marinho como no PDF, sem grelha pesada. */
+.table-wrap {
+  border: 0;
+}
+.table th {
+  padding: 7px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule-soft);
+  font-size: 12.5px;
+}
+.table td {
+  border-right: 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.table input {
+  padding: 9px 14px;
+  color: var(--navy);
+}
+.table tbody tr:hover td {
+  background-color: #f8f9fb;
+}
+
+/* Blocos vazios: recolhidos e a cinzento — o vermelho fica só para o que vai para o PDF. */
+.block:has(> .table-wrap .table__empty) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top-color: var(--rule);
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.55);
+}
+.block:has(> .table-wrap .table__empty) .block__title {
+  flex: 1;
+  min-height: 42px;
+  border-bottom: 0;
+  color: var(--graphite);
+  font-size: 18px;
+}
+.block:has(> .table-wrap .table__empty) .block__count,
+.block:has(> .table-wrap .table__empty) .table-wrap {
+  display: none;
+}
+.block:has(> .table-wrap .table__empty) .block__foot {
+  padding: 0 10px 0 0;
+  background: none;
+}
+
+/* Confiança: pequena etiqueta arredondada. */
+.lamp {
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 12px;
+}
+.lamp[data-level='high'] {
+  background: #e7f4ec;
+}
+.lamp[data-level='check'] {
+  background: #fff1c7;
+}
+.lamp[data-level='low'] {
+  background: #fde0dc;
+}
+.lamp[data-level='edited'] {
+  background: #e3eafb;
+}
+
+/* Logística: subtítulos (Horas de saída, Viaturas) no mesmo registo condensado. */
+.departures__title {
+  padding: 0 14px;
+  margin-top: 12px;
+  font-family: var(--condensed);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ink);
+}
+
+/* Botões: cantos ligeiramente arredondados; a ação principal em vermelho. */
+.button {
+  border-radius: 4px;
+}
+.button--small {
+  border-width: 1px;
+  border-color: var(--rule);
+  font-weight: 600;
+}
+.button--small:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+.button--primary {
+  border-color: var(--red);
+  background: var(--red);
+}
+.button--primary:hover:not(:disabled) {
+  background: #c9271a;
+}
+
+/* Barra de ações: branca, a flutuar sobre o conteúdo. */
+.actionbar {
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 0;
+  box-shadow: 0 -1px 0 var(--rule-soft), 0 -10px 24px rgba(49, 55, 91, 0.08);
+  backdrop-filter: blur(6px);
+}
+.actionbar .button--primary {
+  min-width: 150px;
+  font-family: var(--condensed);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
