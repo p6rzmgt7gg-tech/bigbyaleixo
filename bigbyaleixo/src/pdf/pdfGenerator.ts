@@ -10,7 +10,7 @@ import { PDFDocument, PDFEmbeddedPage, rgb, type PDFFont, type PDFImage, type PD
 import type { CallSheetTemplate, HeaderFieldDef, SectionDef } from '../templates';
 import type { CallSheetDocument, ColumnKey, HeaderKey, SheetRow } from '../types/callSheet';
 import { vehicleCode, withDepartures, withTeamLogistics } from '../utils/logistics';
-import { formatDateTime, pdfFileName } from '../utils/formatters';
+import { pdfFileName } from '../utils/formatters';
 import { COLOR, CONTENT_WIDTH, PAGE, SIZE, SPACE, VEHICLE_TINTS, type Rgb } from './pdfStyles';
 
 /** Ficheiros TTF da Barlow Condensed (ver src/pdf/fonts). */
@@ -761,17 +761,17 @@ function drawInfoLines(composer: Composer, document: CallSheetDocument, fields: 
   composer.y += 10;
 }
 
-function drawFooters(composer: Composer, document: CallSheetDocument, generatedAt: Date): void {
+function drawFooters(composer: Composer, document: CallSheetDocument): void {
+  // Rodapé: só a nota do documento (sem "Gerado com…" no canto, que se sobrepunha à nota).
   const { canvas } = composer;
-  const total = composer.pages.length;
-  const note = document.header.footer.value.trim();
-  composer.pages.forEach((page, index) => {
+  const note = (document.header.footer?.value ?? '').trim();
+  if (note === '') return;
+  const lines = canvas.type.wrap(note, 'medium', SIZE.footer, CONTENT_WIDTH);
+  const step = SIZE.footer * 1.25;
+  composer.pages.forEach((page) => {
     canvas.page = page;
-    const top = PAGE.height - PAGE.marginBottom - 14;
-    if (note !== '') canvas.text(note, PAGE.marginX, top, 'medium', SIZE.footer, COLOR.ink, 14);
-    const credit = `Gerado com ${BRAND} em ${formatDateTime(generatedAt)}${total > 1 ? `   ·   Página ${index + 1} de ${total}` : ''}`;
-    const width = canvas.type.width(credit, 'regular', SIZE.credit);
-    canvas.text(credit, PAGE.width - PAGE.marginX - width, top + 3, 'regular', SIZE.credit, COLOR.muted, 10);
+    const top = PAGE.height - PAGE.marginBottom - 14 - (lines.length - 1) * step;
+    lines.forEach((line, index) => canvas.text(line, PAGE.marginX, top + index * step, 'medium', SIZE.footer, COLOR.ink, 14));
   });
 }
 
@@ -922,7 +922,7 @@ export async function generateCallSheetPdf(source: CallSheetDocument, template: 
     }
   }
 
-  drawFooters(composer, document, generatedAt);
+  drawFooters(composer, document);
   const bytes = await pdf.save();
   return { bytes, fileName: pdfFileName(document, generatedAt), pageCount: composer.pages.length };
 }
